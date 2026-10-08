@@ -7,6 +7,8 @@ import com.myatminkhant.task_board.DTO.SignupRequest;
 import com.myatminkhant.task_board.Entity.User;
 import com.myatminkhant.task_board.Service.AuthService;
 
+import jakarta.validation.Valid;
+
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -28,21 +30,21 @@ public class AuthController {
     }
 
     @PostMapping("/auth/register")
-    public ResponseEntity<?> signup (@RequestBody SignupRequest request) {
+    public ResponseEntity<?> signup (@Valid @RequestBody SignupRequest request) {
         User result = authService.signup(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @PostMapping("/auth/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
        Map<String,Object> result = authService.login(request);
 
        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/users/me")
-    public ResponseEntity<?> getMe(@RequestHeader ("Authorization") String token) {
+    public ResponseEntity<?> getMe(@Valid @RequestHeader ("Authorization") String token) {
         
         String result = token.replace("Bearer ", "");
 

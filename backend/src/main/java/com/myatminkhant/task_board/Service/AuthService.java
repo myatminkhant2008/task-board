@@ -41,12 +41,12 @@ public class AuthService {
 
     public Map<String,Object> login(LoginRequest request) {
 
-        User user = repository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("Account not found."));
+        User user = repository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("Invalid email or password."));
 
         boolean passwordMatches = passwordEncoder.matches(request.getPassword_hash(), user.getPassword_hash());
 
         if(!passwordMatches) {
-            throw new RuntimeException("Incorrect password.");
+            throw new RuntimeException("Invalid email or password.");
         }
 
         String token = jwt.GenerateToken(user.getId());
