@@ -2,8 +2,10 @@ package com.myatminkhant.task_board.Service;
 
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.myatminkhant.task_board.DTO.LoginRequest;
 import com.myatminkhant.task_board.DTO.SignupRequest;
@@ -41,12 +43,15 @@ public class AuthService {
 
     public Map<String,Object> login(LoginRequest request) {
 
-        User user = repository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("Invalid email or password."));
+        User user = repository.findByEmail(request.getEmail()).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Invalid email or password."));
 
         boolean passwordMatches = passwordEncoder.matches(request.getPassword_hash(), user.getPassword_hash());
 
         if(!passwordMatches) {
-            throw new RuntimeException("Invalid email or password.");
+            throw new ResponseStatusException(
+                           HttpStatus.UNAUTHORIZED,
+                           "Invalid email or password."
+            );
         }
 
         String token = jwt.GenerateToken(user.getId());
