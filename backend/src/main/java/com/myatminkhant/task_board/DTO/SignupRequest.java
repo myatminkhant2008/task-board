@@ -15,7 +15,7 @@ public class SignupRequest {
     @NotBlank (message = "Email is required.") @Email (message = "Invalid email.")
     private String email;
 
-    @NotBlank (message = "Password is required.") @Size (min = 6,message = "At least 6 character.")
+    @NotBlank (message = "Password is required.") @Size (min = 6,message = "Password must be at least 6 characters.")
     private String password_hash;
 
      private LocalDateTime created_at;
