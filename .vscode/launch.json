@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-TaskBoardApplication<task-board>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.myatminkhant.task_board.TaskBoardApplication",
+            "projectName": "task-board",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
