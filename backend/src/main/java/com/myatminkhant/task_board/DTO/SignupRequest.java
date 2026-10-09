@@ -1,8 +1,6 @@
 package com.myatminkhant.task_board.DTO;
 
-import java.time.LocalDateTime;
 
-import jakarta.persistence.PrePersist;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -17,13 +15,6 @@ public class SignupRequest {
 
     @NotBlank (message = "Password is required.") @Size (min = 6,message = "Password must be at least 6 characters.")
     private String password_hash;
-
-     private LocalDateTime created_at;
-
-    @PrePersist
-    protected void onCreate() {
-        created_at = LocalDateTime.now();
-    }
 
     public SignupRequest() {
 
@@ -45,10 +36,6 @@ public class SignupRequest {
 
     public String getPassword_hash() {
         return password_hash;
-    }
-
-    public LocalDateTime getCreated_at() {
-        return created_at;
     }
 
     
