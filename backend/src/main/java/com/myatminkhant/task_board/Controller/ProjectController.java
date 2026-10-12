@@ -35,7 +35,7 @@ public class ProjectController {
         
         String final_token = tokne.replace("Bearer ", "");
 
-        String result = projectService.createProject(request, final_token);
+        ProjectResponse result = projectService.createProject(request, final_token);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }

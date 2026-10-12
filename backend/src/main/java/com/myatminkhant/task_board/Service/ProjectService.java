@@ -27,7 +27,7 @@ public class ProjectService {
         this.jwt = jwt;
     }
 
-    public String createProject(ProjectRequest request,String token) {
+    public ProjectResponse createProject(ProjectRequest request,String token) {
 
         Long userID = jwt.getUserID(token);
         User user = userRepository.findById(userID).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"User not found."));
@@ -39,7 +39,15 @@ public class ProjectService {
 
         projectRepository.save(project);
 
-        return "Create project is successfully.";
+         ProjectResponse response = new ProjectResponse(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getOwner().getId(),
+                project.getCreated_at()
+            );
+
+        return response;
     }
     
     public List<ProjectResponse> getMyProjects(String token) {
