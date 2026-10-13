@@ -79,7 +79,7 @@ public class TaskController {
 
         TaskResponse task = taskService.updateStatus(id,request);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(task);
+        return ResponseEntity.ok(task);
     }
     
     @DeleteMapping ("/tasks/{id}")
