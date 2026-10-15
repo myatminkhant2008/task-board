@@ -63,7 +63,7 @@ public class AuthService {
     }
 
     public User getMe(String token) {
-        Long userID = jwt.getUserID(token);
+       Long userID = jwt.getUserID(token);
 
        User user = repository.findById(userID).orElseThrow(() -> new RuntimeException("User not found."));
 
