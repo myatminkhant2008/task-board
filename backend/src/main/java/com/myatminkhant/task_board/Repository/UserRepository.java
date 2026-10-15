@@ -1,0 +1,13 @@
+package com.myatminkhant.task_board.Repository;
+
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.myatminkhant.task_board.Entity.User;
+
+public interface UserRepository extends JpaRepository<User,Long> {
+
+    Optional<User> findByEmail(String email);
+    boolean existsByEmail(String email);
+}
