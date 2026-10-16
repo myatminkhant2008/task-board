@@ -4,8 +4,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.myatminkhant.task_board.DTO.ProjectRequest;
 import com.myatminkhant.task_board.DTO.ProjectResponse;
-import com.myatminkhant.task_board.Entity.Project;
-import com.myatminkhant.task_board.Repository.ProjectRepository;
 import com.myatminkhant.task_board.Service.ProjectService;
 
 import jakarta.validation.Valid;

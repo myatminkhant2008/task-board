@@ -1,7 +1,6 @@
 package com.myatminkhant.task_board.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Objects;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
@@ -9,7 +8,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.myatminkhant.task_board.DTO.StatusUpdateRequest;
@@ -41,19 +39,32 @@ public class TaskService {
 
     public TaskResponse addTask(Long project_id,TaskRequest request,String token) {
 
-
         Long userID = jwt.getUserID(token);
+
+        if (userID == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"User is not found");
+        }
+
+        if (project_id == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found");
+        }
+
         User user = userRepository.findById(userID).orElseThrow(
             () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"User not found."));
         
         Project project = projectRepository.findById(project_id).orElseThrow(
             () -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Project not found."));
 
+        if (!Objects.equals(project.getOwner().getId(), userID)) {
+            throw new ResponseStatusException(
+              HttpStatus.FORBIDDEN,"You cannot access this project."
+            );
+        }
+
         Task task = new Task();
 
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
-        task.setStatus(request.getStatus());
         task.setPriority(request.getPriority());
         task.setDue_date(request.getDue_date());
         task.setProject(project);
@@ -75,12 +86,23 @@ public class TaskService {
         return response;
     }
 
-    public List<TaskResponse> getTask(Long project_id,String search,Status status,int page,int size,String sort,String token) {
-        Long assignee_id = jwt.getUserID(token);
+    public Page<TaskResponse> getTask(Long project_id,String search,Status status,int page,int size,String sort,String token) {
+        Long userID = jwt.getUserID(token);
 
-        projectRepository.findById(project_id).orElseThrow(
+        if (project_id == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found");
+        }
+
+        Project project = projectRepository.findById(project_id).orElseThrow(
             () -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Project not found.")
         );
+
+        if (!Objects.equals(project.getOwner().getId(), userID)) {
+            throw new ResponseStatusException(
+              HttpStatus.FORBIDDEN,"You cannot access this project."
+            );
+        }
+        
 
         if(search != null && search.isBlank()) {
             search = null;
@@ -91,17 +113,16 @@ public class TaskService {
             sortField = "due_date";
         }
         else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid sort field.");
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,"Invalid sort field."
+            );
         }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC,sortField));
 
         Page<Task> tasks = repository.searchTask(project_id, search, status, pageable);
 
-        List<TaskResponse> taskResponses = new ArrayList<>();
-
-        for(Task task:tasks) {
-           TaskResponse response = new TaskResponse(
+        return tasks.map(task -> new TaskResponse (
             task.getId(), 
             task.getTitle(), 
             task.getDescription(), 
@@ -110,20 +131,37 @@ public class TaskService {
             task.getDue_date(), 
             task.getProject().getId(), 
             task.getUser().getId(), 
-            task.getCreated_at());
-
-            taskResponses.add(response);
-        }
-
-        return taskResponses;
+            task.getCreated_at()
+        ));
 
     }
 
-    public TaskResponse getTaskOne(Long id) {
+    public TaskResponse getTaskOne(Long id,String token) {
 
-       Task task = repository.findById(id).orElseThrow(
-        ()-> new ResponseStatusException(HttpStatus.NOT_FOUND,"Task not found.")
-       );
+        Long userID = jwt.getUserID(token);
+
+        if (id == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Task is not found");
+        }
+
+        Task task = repository.findById(id).orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Task not found.")
+        );
+
+        Long projectId = task.getProject().getId();
+        if (projectId == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found");
+        }
+
+        Project project = projectRepository.findById(projectId).orElseThrow(
+            () ->  new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found")
+        );
+
+        if (!Objects.equals(project.getOwner().getId(), userID)) {
+            throw new ResponseStatusException(
+              HttpStatus.FORBIDDEN,"You cannot update this task."
+            );
+        }
        
         TaskResponse response = new TaskResponse(
             task.getId(), 
@@ -139,14 +177,35 @@ public class TaskService {
         return response;
     }
  
-    public TaskResponse updateTask(Long id,TaskUpdateRequest request) {
+    public TaskResponse updateTask(Long id,TaskUpdateRequest request,String token) {
+
+        Long userID = jwt.getUserID(token);
+
+        if (id == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Task is not found");
+        }
+
         Task task = repository.findById(id).orElseThrow(
             () -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Task not found.")
         );
 
+        Long projectId = task.getProject().getId();
+        if (projectId == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found");
+        }
+
+        Project project = projectRepository.findById(projectId).orElseThrow(
+            () ->  new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found")
+        );
+
+        if (!Objects.equals(project.getOwner().getId(), userID)) {
+            throw new ResponseStatusException(
+              HttpStatus.FORBIDDEN,"You cannot update this task."
+            );
+        }
+
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
-        task.setStatus(request.getStatus());
         task.setPriority(request.getPriority());
         task.setDue_date(request.getDue_date());
 
@@ -166,10 +225,31 @@ public class TaskService {
         return response;
     }
  
-    public TaskResponse updateStatus(Long id,StatusUpdateRequest request) {
+    public TaskResponse updateStatus(Long id,StatusUpdateRequest request,String token) {
+        Long userID = jwt.getUserID(token);
+
+        if (id == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Task is not found");
+        }
+
         Task task = repository.findById(id).orElseThrow(
             () -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Task not found.")
         );
+
+        Long projectId = task.getProject().getId();
+        if (projectId == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found");
+        }
+
+        Project project = projectRepository.findById(projectId).orElseThrow(
+            () ->  new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found")
+        );
+
+        if (!Objects.equals(project.getOwner().getId(), userID)) {
+            throw new ResponseStatusException(
+              HttpStatus.FORBIDDEN,"You cannot update this task's status."
+            );
+        }
 
         Status currentStatus = task.getStatus();
         Status newStatus = request.getStatus();
@@ -204,16 +284,30 @@ public class TaskService {
 
     public void deleteTask(Long id,String token) {
      
+        Long userID = jwt.getUserID(token);
+
+        if (id == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Task is not found");
+        }
+
         Task task = repository.findById(id).orElseThrow(
             () -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Task not found.")
         );
 
-        Long userID = jwt.getUserID(token);
+        Long projectId = task.getProject().getId();
+        if (projectId == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found");
+        }
 
-        if(task.getUser().getId() != userID) {
+        Project project = projectRepository.findById(projectId).orElseThrow(
+            () ->  new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found")
+        );
 
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN,"You cannot access this task.");
-       }
+        if (!Objects.equals(project.getOwner().getId(), userID)) {
+            throw new ResponseStatusException(
+              HttpStatus.FORBIDDEN,"You cannot delete this task."
+            );
+        }
 
         repository.delete(task);;
         

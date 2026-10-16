@@ -9,6 +9,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.myatminkhant.task_board.DTO.LoginRequest;
 import com.myatminkhant.task_board.DTO.SignupRequest;
+import com.myatminkhant.task_board.DTO.UserResponse;
 import com.myatminkhant.task_board.Entity.User;
 import com.myatminkhant.task_board.Repository.UserRepository;
 
@@ -24,7 +25,7 @@ public class AuthService {
         this.jwt = jwt;
     }
 
-    public User signup(SignupRequest request) {
+    public UserResponse signup(SignupRequest request) {
        
         if(repository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists.");
@@ -38,7 +39,8 @@ public class AuthService {
 
         repository.save(user);
 
-        return user;
+        UserResponse userResponse = new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getCreated_at());
+        return userResponse;
     } 
 
     public Map<String,Object> login(LoginRequest request) {
@@ -56,17 +58,25 @@ public class AuthService {
 
         String token = jwt.GenerateToken(user.getId());
 
+        UserResponse userResponse = new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getCreated_at());
+
         return Map.of(
             "token",token,
-            "user",user
+            "user",userResponse
         );
     }
 
-    public User getMe(String token) {
+    public UserResponse getMe(String token) {
        Long userID = jwt.getUserID(token);
+
+       if (userID == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found");
+        }
 
        User user = repository.findById(userID).orElseThrow(() -> new RuntimeException("User not found."));
 
-       return user;
+       UserResponse userResponse = new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getCreated_at());
+
+       return userResponse;
     }
 }

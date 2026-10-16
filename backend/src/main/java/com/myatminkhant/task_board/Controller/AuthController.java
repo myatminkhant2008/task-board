@@ -4,7 +4,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.myatminkhant.task_board.DTO.LoginRequest;
 import com.myatminkhant.task_board.DTO.SignupRequest;
-import com.myatminkhant.task_board.Entity.User;
+import com.myatminkhant.task_board.DTO.UserResponse;
 import com.myatminkhant.task_board.Service.AuthService;
 
 import jakarta.validation.Valid;
@@ -31,7 +31,7 @@ public class AuthController {
 
     @PostMapping("/auth/register")
     public ResponseEntity<?> signup (@Valid @RequestBody SignupRequest request) {
-        User result = authService.signup(request);
+        UserResponse result = authService.signup(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
@@ -48,7 +48,9 @@ public class AuthController {
         
         String result = token.replace("Bearer ", "");
 
-        return ResponseEntity.ok(authService.getMe(result));
+        UserResponse user = authService.getMe(result);
+        
+        return ResponseEntity.ok(user);
 
     }
     

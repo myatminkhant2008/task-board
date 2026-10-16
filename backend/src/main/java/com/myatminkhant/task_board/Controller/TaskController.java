@@ -9,8 +9,9 @@ import com.myatminkhant.task_board.DTO.TaskUpdateRequest;
 import com.myatminkhant.task_board.Enum.Status;
 import com.myatminkhant.task_board.Service.TaskService;
 
-import java.util.List;
+import jakarta.validation.Valid;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,7 +37,7 @@ public class TaskController {
     }
 
     @PostMapping("/projects/{id}/tasks")
-    public ResponseEntity<?> addTask(@PathVariable Long id,@RequestBody TaskRequest request,@RequestHeader ("Authorization") String token) {
+    public ResponseEntity<?> addTask(@PathVariable Long id,@Valid @RequestBody TaskRequest request,@RequestHeader ("Authorization") String token) {
         
         String final_token = token.replace("Bearer ", "");
         TaskResponse result = taskService.addTask(id, request, final_token);
@@ -53,7 +54,7 @@ public class TaskController {
                                     ) {
         
         String final_token = token.replace("Bearer ", "");
-        List<TaskResponse> result = taskService.getTask(id, search,status,page,size,sort,final_token);
+        Page<TaskResponse> result = taskService.getTask(id, search,status,page,size,sort,final_token);
 
         return ResponseEntity.ok(result);
     }
@@ -61,23 +62,27 @@ public class TaskController {
     @GetMapping("/tasks/{id}")
     public ResponseEntity<?> getTaskOne(@PathVariable Long id,@RequestHeader ("Authorization") String token) {
        
-        TaskResponse task = taskService.getTaskOne(id);
+        String final_token = token.replace("Bearer ", "");
+        TaskResponse task = taskService.getTaskOne(id,final_token);
         return ResponseEntity.ok(task);
 
     }
 
     @PutMapping("/tasks/{id}")
-    public ResponseEntity<?> updateTask(@PathVariable Long id, @RequestBody TaskUpdateRequest request, @RequestHeader ("Authorization") String token) {
-        
-        TaskResponse task = taskService.updateTask(id,request);
+    public ResponseEntity<?> updateTask(@PathVariable Long id,@Valid @RequestBody TaskUpdateRequest request, @RequestHeader ("Authorization") String token) {
+        String final_token = token.replace("Bearer ", "");
+
+        TaskResponse task = taskService.updateTask(id,request,final_token);
 
         return ResponseEntity.ok(task);
     }
 
     @PatchMapping("/tasks/{id}/status")
-    public ResponseEntity<?> updateStatus(@PathVariable Long id,@RequestBody StatusUpdateRequest request,@RequestHeader ("Authorization") String token) {
+    public ResponseEntity<?> updateStatus(@PathVariable Long id,@Valid @RequestBody StatusUpdateRequest request,@RequestHeader ("Authorization") String token) {
 
-        TaskResponse task = taskService.updateStatus(id,request);
+        String final_token = token.replace("Bearer ", "");
+
+        TaskResponse task = taskService.updateStatus(id,request,final_token);
 
         return ResponseEntity.ok(task);
     }

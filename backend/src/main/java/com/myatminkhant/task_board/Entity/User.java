@@ -2,8 +2,6 @@ package com.myatminkhant.task_board.Entity;
 
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -25,7 +23,6 @@ public class User {
     @Column (unique = true,nullable = false)
     private String email;
 
-    @JsonIgnore
     @Column(name = "password_hash",nullable = false)
     private String password_hash;
 

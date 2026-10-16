@@ -30,6 +30,11 @@ public class ProjectService {
     public ProjectResponse createProject(ProjectRequest request,String token) {
 
         Long userID = jwt.getUserID(token);
+
+        if (userID == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Project is not found");
+        }
+
         User user = userRepository.findById(userID).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"User not found."));
 
         Project project = new Project();
