@@ -28,7 +28,7 @@ export default function LoginScreen() {
       <View style={styles.form}>
         <Text style={styles.title}>Welcome Back</Text>
 
-        <Text style={styles.subtitle}>Login to your account</Text>
+        <Text style={styles.subtitle}>Log in to manage your projects and tasks.</Text>
 
         <Text style={styles.label}>Email</Text>
 

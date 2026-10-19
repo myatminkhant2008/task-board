@@ -18,9 +18,15 @@ export default function AppTabs() {
         },
       }}
     >
-      <Stack.Screen name="splash" />
+      <Stack.Screen name="index" />
 
-      <Stack.Screen name="home" />
+      <Stack.Screen name="project" />
+
+      <Stack.Screen name="login" />
+      
+      <Stack.Screen name="register" />
+
+      <Stack.Screen name="tasks" />
     </Stack>
   );
 }

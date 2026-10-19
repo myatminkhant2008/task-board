@@ -33,7 +33,7 @@ export default function RegisterScreen() {
         <View style={styles.form}>
           <Text style={styles.title}>Create Account</Text>
 
-          <Text style={styles.subtitle}>Sign up to get started</Text>
+          <Text style={styles.subtitle}>Sign up to get started.</Text>
 
           <Text style={styles.label}>Name</Text>
 

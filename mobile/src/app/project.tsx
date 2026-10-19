@@ -4,9 +4,11 @@ import { useState } from "react";
 import {
   Alert,
   FlatList,
+  Modal,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -24,7 +26,7 @@ export default function ProjectsScreen() {
     {
       id: "1",
       name: "Mobile App",
-      description: "Mobile app test ",
+      description: "A mobile application project designed to help users manage tasks, track progress, and organize team activities efficiently.",
       createdAt: "02 Oct 2026",
     },
     {
@@ -40,9 +42,12 @@ export default function ProjectsScreen() {
       createdAt: "30 Sep 2026",
     },
   ]);
+const [modalVisible, setModalVisible] = useState(false);
+const [projectName, setProjectName] = useState("");
+const [projectDescription, setProjectDescription] = useState("");
 
   const handleCreateProject = () => {
-    Alert.alert("New Project", "Create Project Screen will be added soon.");
+    Alert.alert("Project", "Create project coming soon")
   };
 
   const handleOpenProject = (
@@ -50,7 +55,6 @@ export default function ProjectsScreen() {
     projectName: string,
     projectDescription: string,
   ) => {
-    console.log(projectDescription);
     router.push({
       pathname: "/tasks",
       params: { projectId, projectName, projectDescription },
@@ -100,7 +104,7 @@ export default function ProjectsScreen() {
       <View style={styles.content}>
         <TouchableOpacity
           style={styles.createButton}
-          onPress={handleCreateProject}
+          onPress={() => setModalVisible(true)}
         >
           <Ionicons name="add" size={24} color="#FFFFFF" />
 
@@ -126,6 +130,57 @@ export default function ProjectsScreen() {
           }
         />
       </View>
+      
+<Modal
+  visible={modalVisible}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setModalVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContainer}>
+      <View style={styles.modalHeader}>
+        <Text style={styles.modalTitle}>Create Project</Text>
+
+        <TouchableOpacity
+          onPress={() => setModalVisible(false)}
+        >
+          <Ionicons name="close" size={24} color="#6B7280" />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.label}>Project Name</Text>
+      <TextInput
+        style={styles.modalInput}
+        placeholder="Enter project name"
+        value={projectName}
+        onChangeText={setProjectName}
+        maxLength={100}
+      />
+
+      <Text style={styles.label}>Description</Text>
+      <TextInput
+        style={[styles.modalInput, styles.descriptionInput]}
+        placeholder="Enter project description"
+        value={projectDescription}
+        onChangeText={setProjectDescription}
+        multiline
+        maxLength={500}
+        textAlignVertical="top"
+      />
+
+      <View style={styles.modalButtons}>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => {handleCreateProject()}}
+        >
+          <Text style={styles.createButtonText}>Create Project</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
+
     </SafeAreaView>
   );
 }
@@ -137,13 +192,13 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    height: 65,
-    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: "#E2E8F0",
+    justifyContent: "space-between"
   },
 
   headerTitle: {
@@ -215,13 +270,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#111827",
-    marginBottom: 5,
+    
   },
 
   projectDescription: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#111827",
+    lineHeight: 20,
+    color: "#64748B",
+    marginBottom: 5,
   },
 
   dateRow: {
@@ -252,4 +308,87 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     marginTop: 6,
   },
+
+  modalOverlay: {
+  flex: 1,
+  backgroundColor: "rgba(0, 0, 0, 0.45)",
+  justifyContent: "center",
+  alignItems: "center",
+  padding: 20,
+},
+
+modalContainer: {
+  width: "100%",
+  maxWidth: 420,
+  backgroundColor: "#FFFFFF",
+  borderRadius: 20,
+  padding: 20,
+},
+
+modalHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 24,
+},
+
+modalTitle: {
+  fontSize: 20,
+  fontWeight: "700",
+  color: "#111827",
+},
+
+label: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#374151",
+  marginBottom: 8,
+},
+
+modalInput: {
+  borderWidth: 1,
+  borderColor: "#E5E7EB",
+  borderRadius: 10,
+  paddingHorizontal: 12,
+  paddingVertical: 12,
+  fontSize: 15,
+  marginBottom: 18,
+  color: "#111827",
+},
+
+descriptionInput: {
+  height: 120,
+},
+
+modalButtons: {
+  marginTop: 4,
+},
+
+cancelButton: {
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderRadius: 10,
+  backgroundColor: "#F3F4F6",
+},
+
+cancelButtonText: {
+  color: "#374151",
+  fontWeight: "600",
+},
+
+addButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  backgroundColor: "#4F46E5",
+  paddingHorizontal: 14,
+  paddingVertical: 10,
+  borderRadius: 10,
+},
+
+addButtonText: {
+  color: "#FFFFFF",
+  fontWeight: "600",
+},
 });
