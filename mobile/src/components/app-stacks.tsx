@@ -27,6 +27,12 @@ export default function AppTabs() {
       <Stack.Screen name="register" />
 
       <Stack.Screen name="tasks" />
+
+      <Stack.Screen name="task-detail" />
+
+      <Stack.Screen name="create-task" />
+
+      <Stack.Screen name="profile" />
     </Stack>
   );
 }

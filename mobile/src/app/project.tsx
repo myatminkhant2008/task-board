@@ -95,7 +95,7 @@ const [projectDescription, setProjectDescription] = useState("");
         <Text style={styles.headerTitle}>Task Board</Text>
 
         <TouchableOpacity
-          onPress={() => Alert.alert("Profile", "Profile coming soon")}
+          onPress={() => router.push("/profile")}
         >
           <Ionicons name="person-circle-outline" size={30} color="#374151" />
         </TouchableOpacity>

@@ -214,10 +214,13 @@ export default function TaskDetailScreen() {
           style={styles.editButton}
           activeOpacity={0.8}
           onPress={() =>
-            Alert.alert(
-              "Edit Task",
-              "Edit functionality will be added later."
-            )
+            router.push({
+              pathname: "/create-task",
+              params: {
+                taskId: String(params.taskId),
+                type: String("edit")
+              },
+            })
           }
         >
           <Ionicons name="create-outline" size={20} color="#FFFFFF" />

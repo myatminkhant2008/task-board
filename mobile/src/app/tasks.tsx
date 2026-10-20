@@ -4,6 +4,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -252,10 +254,10 @@ export default function TaskListScreen() {
           style={styles.addButton}
           onPress={() =>
             router.push({
-              pathname: "/tasks",
+              pathname: "/create-task",
               params: {
                 projectId: String(projectId),
-                projectName: String(projectName),
+                type: String("create")
               },
             })
           }
