@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +15,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store"
+import { API } from "../../api";
+import Toast from "react-native-toast-message";
 
 type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
 
@@ -41,6 +45,7 @@ export default function CreateTaskScreen() {
     type: string,
     projectId: string,
     taskId: string,
+    status: string,
   }>();
 
   const isCreate = params.type === "create";
@@ -52,12 +57,13 @@ export default function CreateTaskScreen() {
   const taskId = params.taskId;
   const projectId = params.projectId;
   const [showPriorityOptions, setShowPriorityOptions] = useState(false);
+  const [loading,setLoading] = useState(false)
 
   useEffect(() => {
     getTask();
   },[])
 
-  const getTask = () => {
+  const getTask = async () => {
     
   if (isCreate) {
     setTitle("");
@@ -67,50 +73,148 @@ export default function CreateTaskScreen() {
     return;
   }
 
+  try {
+    const token = await SecureStore.getItemAsync("token")
+    const response = await API.get(`/tasks/${taskId}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+
+    const data = response.data;
+
+    setTitle(data.title);
+    setDescription(data.description);
+    setPriority(data.priority);
+    setDueDate(data.due_date)
+  }
+  catch(error : any) {
+    Toast.show({
+      type: "error",
+      text1: "Failed to Load Task",
+      text2: "Unable to fetch task. Please try again.",
+      position: "bottom"
+    });
+  }
+
 };
   
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert("Required", "Please enter a task title.");
+      Toast.show({
+          type: "info",
+          text1: "Required",
+          text2: "Please enter a task title.",
+          position: "bottom"
+      });
       return;
     }
 
     if (!description.trim()) {
-      Alert.alert("Required", "Please enter a description.");
+      Toast.show({
+          type: "info",
+          text1: "Required",
+          text2: "Please enter a description.",
+          position: "bottom"
+      });
       return;
     }
 
     if (!dueDate.trim()) {
-      Alert.alert("Required", "Please enter a due date.");
+      Toast.show({
+          type: "info",
+          text1: "Required",
+          text2: "Please enter a due date.",
+          position: "bottom"
+      });
       return;
     }
 
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
     if (!datePattern.test(dueDate)) {
-      Alert.alert(
-        "Invalid Date",
-        "Please use YYYY-MM-DD format."
-      );
+      Toast.show({
+          type: "info",
+          text1: "Invalid Date",
+          text2: "Please use YYYY-MM-DD format.",
+          position: "bottom"
+      });
       return;
     }
 
     if(isCreate) {
-        Alert.alert("Success", "Task saved successfully.", [
-      {
-        text: "OK",
-        onPress: () => router.back(),
-      },
-    ]);
+       setLoading(true)
+       try {
+        const token = await SecureStore.getItemAsync("token")
+        await API.post(`/projects/${projectId}/tasks`, {
+          title: title,
+          description: description,
+          priority: priority,
+          due_date: dueDate
+        }, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        })
+
+        Toast.show({
+          type: "success",
+          text1: "Task Created",
+          text2: "Task has been created successfully.",
+          position: "bottom"
+        });
+
+        router.back();
+       }
+       catch (error : any) {
+        const message = error.response?.data
+         Toast.show({
+           type: "error",
+           text1: "Creation Failed",
+           text2: message,
+           position: "bottom"
+         });
+       }
+       finally {
+        setLoading(false)
+       }
     }
     else {
-        Alert.alert("Success", "Task edit saved successfully.", [
-      {
-        text: "OK",
-        onPress: () => router.back(),
-      },
-    ]);
+      setLoading(true)
+       try {
+        const token = await SecureStore.getItemAsync("token")
+        await API.put(`/tasks/${taskId}`, {
+          title: title,
+          description: description,
+          priority: priority,
+          due_date: dueDate
+        }, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        })
+
+        Toast.show({
+          type: "success",
+          text1: "Task Updated",
+          text2: "Task has been updated successfully.",
+          position: "bottom"
+       });
+
+        router.back();
+       }
+       catch (error : any) {
+         const message = error.response?.data
+         Toast.show({
+           type: "error",
+           text1: "Update Failed",
+           text2: message,
+           position: "bottom"
+         });
+       }
+       finally {
+        setLoading(false)
+       }
     }
   };
 
@@ -268,9 +372,10 @@ export default function CreateTaskScreen() {
             onPress={handleSave}
             activeOpacity={0.8}
           >
+            {loading? <ActivityIndicator size={"small"} color={"white"}/> : 
             <Text style={styles.saveButtonText}>
               {isCreate? "Save" : "Save Changes"}
-            </Text>
+            </Text>}
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>

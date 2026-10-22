@@ -1,8 +1,9 @@
 
 import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -13,20 +14,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  due_date: string;
-  project_id: string;
-  assignee_id: string;
-}
+import * as SecureStore from "expo-secure-store"
+import { API } from "../../api";
+import Toast from "react-native-toast-message";
 
 const statusFilters = [
-  { label: "All", value: "ALL" },
+  { label: "All", value: "" },
   { label: "To Do", value: "TODO" },
   { label: "In Progress", value: "IN_PROGRESS" },
   { label: "Done", value: "DONE" },
@@ -41,56 +34,99 @@ export default function TaskListScreen() {
     }>();
 
   const [searchText, setSearchText] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("ALL");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [tasks,setTasks] = useState<any[]>([]);
+  const [loading,setLoading] = useState(false)
+  const [page,setPage] = useState(0)
+  const [totalPage,setTotalPage] = useState(0)
+  const [refresh,setRefresh] = useState(false)
+  const [taskCount,setTaskCount] = useState(0)
 
-  const [task] = useState<Task[]>([
-    {
-      id: "1",
-      title: "Login Fix",
-      description: "Fix login authentication and validation issues.",
-      status: "TODO",
-      priority: "MEDIUM",
-      due_date: "20-10-2026",
-      project_id: "1",
-      assignee_id: "1",
-    },
-    {
-      id: "2",
-      title: "JWT Fix",
-      description: "Fix JWT token validation in the backend.",
-      status: "IN_PROGRESS",
-      priority: "HIGH",
-      due_date: "22-10-2026",
-      project_id: "1",
-      assignee_id: "1",
-    },
-    {
-      id: "3",
-      title: "Write Document",
-      description: "Write document for project information.",
-      status: "DONE",
-      priority: "LOW",
-      due_date: "18-10-2026",
-      project_id: "1",
-      assignee_id: "1",
-    },
-  ]);
+  useFocusEffect(
+    useCallback(() => {
+      getTasks();
+    },[searchText,selectedStatus])
+  )
 
-  const filteredTasks = task.filter((item) => {
-    const keyword = searchText.trim().toLowerCase();
+  const formatDate = (createdAt: string) => {
+     const date = new Date(createdAt);
 
-    const matchesSearch =
-      item.title.toLowerCase().includes(keyword) ||
-      item.description.toLowerCase().includes(keyword);
+     return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+ };
 
-    const matchesStatus =
-      selectedStatus === "ALL" ||
-      item.status === selectedStatus;
+  const getTasks = async (pageNumber = 0) => {
+    if(pageNumber === 0) {
+      setRefresh(true)
+    }
+    else {
+      setLoading(true)
+    }
+    try {
+      const token = await SecureStore.getItemAsync("token") 
+      const response = await API.get(`/projects/${projectId}/tasks`, {
+        params: {
+          status: selectedStatus,
+          search: searchText,
+          page: pageNumber,
+          size: 20,
+          sort: "dueDate"
+        },
 
-    return matchesSearch && matchesStatus;
-  });
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
 
-  const renderTask = ({ item }: { item: Task }) => {
+     const data = response.data
+     if(pageNumber === 0) {
+       setTasks(data.content);
+     }
+     else {
+      setTasks((prev) => [...prev,...data.content])
+     }
+
+     setPage(pageNumber);
+     setTotalPage(data.totalPages)
+     setTaskCount(data.totalElements)
+    }
+    catch (error : any) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to Load Tasks",
+        text2: "Unable to fetch tasks. Please try again.",
+        position: "bottom"
+      });
+    }
+    finally {
+      setRefresh(false)
+      setLoading(false)
+    }
+  }
+
+  const handleEndReach = () => {
+    if(!loading && page + 1 < totalPage) {
+      getTasks(page + 1);
+    }
+  }
+
+  const handleRefresh = () => {
+    setRefresh(true)
+    getTasks(0);
+    setPage(0)
+    setRefresh(false)
+  }
+
+  const listFooter = () => {
+    if (!loading) return null;
+    return <ActivityIndicator size={"small"} color={"black"}/>
+  }
+
+
+  const renderTask = ({ item }: { item: any }) => {
     const statusColor =
       item.status === "DONE"
         ? "#059669"
@@ -198,7 +234,7 @@ export default function TaskListScreen() {
             />
 
             <Text style={styles.projectDate}>
-              {item.due_date}
+              {formatDate(item.due_date)}
             </Text>
           </View>
         </View>
@@ -206,7 +242,7 @@ export default function TaskListScreen() {
     );
   };
 
-  const openTaskDetail = (item: Task) => {
+  const openTaskDetail = (item: any) => {
   router.push({
     pathname: "/task-detail",
     params: {
@@ -338,13 +374,13 @@ export default function TaskListScreen() {
 
         <View style={styles.listHeader}>
           <Text style={styles.taskCount}>
-            {filteredTasks.length}{" "}
-            {filteredTasks.length === 1 ? "task" : "tasks"}
+            {taskCount}{" "}
+            {taskCount > 1 ? "tasks" : "task"}
           </Text>
         </View>
 
         <FlatList
-          data={filteredTasks}
+          data={tasks}
           keyExtractor={(item) => item.id}
           renderItem={renderTask}
           showsVerticalScrollIndicator={false}
@@ -366,6 +402,11 @@ export default function TaskListScreen() {
               </Text>
             </View>
           }
+          onEndReached={handleEndReach}
+          onEndReachedThreshold={0.5}
+          refreshing={refresh}
+          onRefresh={handleRefresh}
+          ListFooterComponent={listFooter}
         />
       </View>
     </SafeAreaView>
@@ -449,24 +490,28 @@ const styles = StyleSheet.create({
   },
 
   filterContainer: {
+    height: 48,
     flexGrow: 0,
+    flexShrink: 0,
     marginBottom: 18,
-  },
+ },
 
   filterList: {
     gap: 10,
     paddingRight: 4,
+    alignItems: "center",
   },
 
   filterTab: {
+    height: 48,
     paddingHorizontal: 16,
-    paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
 
   activeFilterTab: {

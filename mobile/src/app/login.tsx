@@ -1,6 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -9,15 +11,68 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { API } from "../../api";
+import * as SecureStore from "expo-secure-store"
+import Toast from "react-native-toast-message";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading,setLoading] = useState(false)
 
-  const handleLogin = () => {
-    console.log("Email:", email);
-    console.log("Password:", password);
-    router.replace("/project");
+  const handleLogin = async () => {
+    if (!email.trim()) {
+          Toast.show({
+             type: "info",
+             text1: "Required",
+             text2: "Please enter your email.",
+             position: "bottom"
+          });
+         return;
+    }
+
+    if (!password.trim()) {
+          Toast.show({
+             type: "info",
+             text1: "Required",
+             text2: "Please enter your password.",
+             position: "bottom"
+          });
+         return;
+    }
+
+    setLoading(true)
+    try {
+      const response = await API.post("/auth/login",{
+        email: email,
+        password_hash: password
+      })
+      const token = response.data.token
+      await SecureStore.setItemAsync("token",token);
+
+      Toast.show({
+        type: "success",
+        text1: "Login Successful",
+        text2: "Welcome back!",
+        position: "bottom"
+      });
+
+      router.replace("/project")
+    }
+    catch (error: any) {
+    const message = error.response?.data;
+
+    Toast.show({
+      type: "error",
+      text1: "Login Failed",
+      text2: message,
+      position: "bottom"
+    });
+    
+    }
+    finally {
+      setLoading(false)
+    }
   };
 
   return (
@@ -54,7 +109,8 @@ export default function LoginScreen() {
         />
 
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login</Text>
+          {loading? <ActivityIndicator size={"small"} color="white"/> : <Text style={styles.buttonText}>Login</Text> }
+          
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push("/register")}>

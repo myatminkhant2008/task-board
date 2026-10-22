@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -13,42 +14,116 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-}
+import * as SecureStore from "expo-secure-store"
+import { API } from "../../api";
+import Toast from "react-native-toast-message";
 
 export default function ProjectsScreen() {
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: "1",
-      name: "Mobile App",
-      description: "A mobile application project designed to help users manage tasks, track progress, and organize team activities efficiently.",
-      createdAt: "02 Oct 2026",
-    },
-    {
-      id: "2",
-      name: "Website",
-      description: "Website app test ",
-      createdAt: "01 Oct 2026",
-    },
-    {
-      id: "3",
-      name: "Marketing",
-      description: "Marketing app test ",
-      createdAt: "30 Sep 2026",
-    },
-  ]);
+const [projects, setProjects] = useState([])
 const [modalVisible, setModalVisible] = useState(false);
 const [projectName, setProjectName] = useState("");
 const [projectDescription, setProjectDescription] = useState("");
+const [loading,setLoading] = useState(false)
+const [upload,setUpload] = useState(false)
 
-  const handleCreateProject = () => {
-    Alert.alert("Project", "Create project coming soon")
+useEffect(() => {
+  getproject()
+},[])
+
+const formatDate = (createdAt: string) => {
+  const date = new Date(createdAt);
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+  const handleCreateProject = async () => {
+    const token = await SecureStore.getItemAsync("token")
+    if (!projectName.trim()) {
+       Toast.show({
+         type: "info",
+         text1: "Required",
+         text2: "Please enter a project name.",
+         position: "bottom"
+        });
+       return;
+    }
+
+    if (!projectDescription.trim()) {
+       Toast.show({
+         type: "info",
+         text1: "Required",
+         text2: "Please enter a project description.",
+         position: "bottom"
+        });
+        return;
+    }
+
+    setUpload(true)
+    try {
+      await API.post("/projects", {
+        name: projectName,
+        description: projectDescription
+      },{
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      Toast.show({
+        type: "success",
+        text1: "Project Created",
+        text2: "Your project has been created successfully!",
+        position: "bottom"
+      });
+    }
+    catch(error : any) {
+      const message = error.response?.data
+      Toast.show({
+        type: "error",
+        text1: "Project Creation Failed",
+        text2: message,
+        position: "bottom"
+      });
+    }
+    finally {
+      setUpload(false)
+    }
   };
+
+  const getproject = async () => {
+    setLoading(true)
+    try {
+      const token = await SecureStore.getItemAsync("token")
+      const response = await API.get("/projects", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      setProjects(response.data)
+    }
+    catch(error : any) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to Load Projects",
+        text2: "Unable to fetch projects. Please try again.",
+        position: "bottom"
+      });
+    }
+    finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRefresh = () => {
+    setLoading(true)
+    getproject()
+    setLoading(false)
+  }
 
   const handleOpenProject = (
     projectId: string,
@@ -61,7 +136,7 @@ const [projectDescription, setProjectDescription] = useState("");
     });
   };
 
-  const renderProject = ({ item }: { item: Project }) => (
+  const renderProject = ({ item }: { item : any }) => (
     <TouchableOpacity
       style={styles.projectCard}
       onPress={() => handleOpenProject(item.id, item.name, item.description)}
@@ -79,7 +154,7 @@ const [projectDescription, setProjectDescription] = useState("");
         <View style={styles.dateRow}>
           <Ionicons name="calendar-outline" size={14} color="#9CA3AF" />
 
-          <Text style={styles.projectDate}>{item.createdAt}</Text>
+          <Text style={styles.projectDate}>{formatDate(item.created_at)}</Text>
         </View>
       </View>
 
@@ -128,6 +203,8 @@ const [projectDescription, setProjectDescription] = useState("");
               <Text style={styles.emptySubText}>Create your first project</Text>
             </View>
           }
+          refreshing={loading}
+          onRefresh={handleRefresh}
         />
       </View>
       
@@ -174,7 +251,7 @@ const [projectDescription, setProjectDescription] = useState("");
           style={styles.createButton}
           onPress={() => {handleCreateProject()}}
         >
-          <Text style={styles.createButtonText}>Create Project</Text>
+          {upload? <ActivityIndicator size={"small"} color={"white"}/> : <Text style={styles.createButtonText}>Create Project</Text> }
         </TouchableOpacity>
       </View>
     </View>

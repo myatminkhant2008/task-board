@@ -1,7 +1,7 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -11,12 +11,50 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store"
+import { API } from "../../api";
+import Toast from "react-native-toast-message";
 
 export default function ProfileScreen() {
-  const [user] = useState({
-    name: "Myat Min Khant",
-    email: "myatminkhant@example.com",
-  });
+  const [name,setName] = useState("...")
+  const [email,setEmail] = useState("...")
+  const [createdAt,setCreatedAt] = useState("")
+  
+  useEffect(() => {
+    getUser();
+  },[])
+
+  const formatDate = (createdAt: string) => {
+    const date = new Date(createdAt);
+
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+};
+
+  const getUser = async () => {
+    const token = await SecureStore.getItemAsync("token")
+    try {
+      const response = await API.get("/users/me" , {
+        headers: {
+          "Authorization" : `Bearer ${token}`
+        }
+      })
+
+      setName(response.data.name)
+      setEmail(response.data.email)
+      setCreatedAt(response.data.created_at)
+    }
+    catch(error : any) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to Load Profile",
+        text2: "Unable to fetch your profile. Please try again.",
+      });
+    }
+  }
 
   const handleLogout = () => {
     Alert.alert(
@@ -30,7 +68,8 @@ export default function ProfileScreen() {
         {
           text: "Log Out",
           style: "destructive",
-          onPress: () => {
+          onPress: async () => {
+            await SecureStore.deleteItemAsync("token")
             router.replace("/login");
           },
         },
@@ -65,19 +104,19 @@ export default function ProfileScreen() {
 
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
+            <Text style={styles.avatarText}>{name.charAt(0)}</Text>
           </View>
 
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userEmail}>{user.email}</Text>
+          <Text style={styles.userName}>{name}</Text>
+          <Text style={styles.userEmail}>{email}</Text>
 
           <View style={styles.roleBadge}>
             <Ionicons
-              name="person-circle-outline"
+              name="calendar-outline"
               size={16}
               color="#2563EB"
             />
-            <Text style={styles.roleText}>Task Board Member</Text>
+            <Text style={styles.roleText}>{formatDate(createdAt)}</Text>
           </View>
 
           <TouchableOpacity
@@ -141,7 +180,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    marginTop: 20
+    marginTop: 20,
+    height: 350
   },
 
   avatarContainer: {

@@ -1,6 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -10,15 +12,84 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { API } from "../../api";
+import Toast from "react-native-toast-message";
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading,setLoading] = useState(false)
 
-  const handleRegister = () => {
-    console.log("Name:", name);
-    console.log("Email:", email);
+  const handleRegister = async () => {
+    if (!name.trim()) {
+          Toast.show({
+            type: "info",
+            text1: "Required",
+            text2: "Please enter your name.",
+            position: "bottom"
+          });
+          return;
+    }
+
+    if (!email.trim()) {
+          Toast.show({
+            type: "info",
+            text1: "Required",
+            text2: "Please enter your email.",
+            position: "bottom"
+          });
+          return;
+    }
+
+    if (!password.trim()) {
+          Toast.show({
+            type: "info",
+            text1: "Required",
+            text2: "Please enter your password.",
+            position: "bottom"
+          });
+          return;
+    }
+
+    if (password.trim().length < 6) {
+          Toast.show({
+            type: "info",
+            text1: "Invalid Password",
+            text2: "Password must be at least 6 characters.",
+            position: "bottom"
+          });
+          return;
+    }
+
+    setLoading(true)
+    try {
+      await API.post("/auth/register",{
+        name: name,
+        email: email,
+        password_hash:  password
+      })
+
+      Toast.show({
+        type: "success",
+        text1: "Sign Up Successful",
+        text2: "Your account has been created!",
+        position: "bottom"
+      });
+      router.replace("/login")
+    }
+    catch (error: any) {
+    const message = error.response?.data;
+    Toast.show({
+      type: "error",
+      text1: "Sign Up Failed",
+      text2: message,
+      position: "bottom"
+    });
+  }
+    finally{
+      setLoading(false)
+    }
   };
 
   return (
@@ -69,7 +140,9 @@ export default function RegisterScreen() {
           />
 
           <TouchableOpacity style={styles.button} onPress={handleRegister}>
-            <Text style={styles.buttonText}>Sign Up</Text>
+            {loading? <ActivityIndicator size={"small"} color="white"/> : 
+              <Text style={styles.buttonText}>Sign Up</Text>
+            }
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.replace("/login")}>

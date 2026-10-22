@@ -1,8 +1,9 @@
 
 import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -14,6 +15,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { API } from "../../api";
+import * as SecureStore from "expo-secure-store"
+import Toast from "react-native-toast-message";
 
 type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
 type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
@@ -69,23 +73,140 @@ export default function TaskDetailScreen() {
   }>();
 
   const [status, setStatus] = useState<TaskStatus>(params.status as TaskStatus);
-  const [title] = useState(params.title);
-  const [description] = useState(params.description);
-  const [priority] = useState<TaskPriority>(params.priority as TaskPriority);
-  const [dueDate] = useState(params.due_date)
+  const [title,setTitle] = useState(params.title);
+  const [description,setDescription] = useState(params.description);
+  const [priority,setPriority] = useState<TaskPriority>(params.priority as TaskPriority);
+  const [dueDate,setDuedate] = useState(params.due_date)
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
+  const [delTask,setDelTask] = useState(false)
 
-  const handleStatusChange = (newStatus: TaskStatus) => {
-    setStatus(newStatus);
-    setShowStatusModal(false);
+  useFocusEffect(
+    useCallback(() => {
+      getTask();
+    },[])
+  )
+
+  const formatDate = (createdAt: string) => {
+    const date = new Date(createdAt);
+
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+     });
   };
 
+  const getTask = async () => {
+    try {
+      const token = await SecureStore.getItemAsync("token")
+      const response = await API.get(`/tasks/${params.taskId}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+  
+      const data = response.data;
+  
+      setStatus(data.status as TaskStatus)
+      setTitle(data.title)
+      setDescription(data.description)
+      setPriority(data.priority as TaskPriority)
+      setDuedate(data.due_date)
+    }
+    catch(error : any) {
+      const message = error.response?.data
+      Alert.alert("Fail",message)
+    }
+  
+  };
+
+  const handleStatusChange = async (newStatus: TaskStatus) => {
+    setLoadingStatus(newStatus)
+    try {
+      const token = await SecureStore.getItemAsync("token")
+      await API.patch(`tasks/${params.taskId}/status`, {
+        status: newStatus
+      },{
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      Toast.show({
+        type: "success",
+        text1: "Status Updated",
+        text2: "Task status has been changed successfully.",
+        position: "bottom"
+      });
+
+      setStatus(newStatus);
+      setShowStatusModal(false);
+    }
+    catch (error : any) {
+      const message = error.response?.data
+      Toast.show({
+        type: "error",
+        text1: "Update Failed",
+        text2: message,
+        position: "bottom"
+      });
+      setShowStatusModal(false);
+    }
+    finally {
+      setLoadingStatus(null)
+    }
+  };
+
+  const deleteTask = async () => {
+    setDelTask(true)
+    try {
+      const token = await SecureStore.getItemAsync("token")
+      await API.delete(`/tasks/${params.taskId}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+
+    Toast.show({
+       type: "success",
+       text1: "Task Deleted",
+       text2: "Task has been deleted successfully.",
+       position: "bottom"
+    });
+     router.back();
+    }
+    catch {
+      Toast.show({
+        type: "error",
+        text1: "Delete Failed",
+        text2: "Failed to delete task. Please try again.",
+        position: "bottom"
+     });
+    }
+    finally {
+      setDelTask(false)
+    }
+  }
+
   const handleDelete = () => {
-    Alert.alert(
-      "Delete Task",
-      "Delete functionality is not connected yet.",
-      [{ text: "OK" }]
-    );
+   Alert.alert(
+  "Delete Task",
+  "Are you sure you want to delete this task?",
+  [
+    {
+      text: "Cancel",
+      style: "cancel",
+    },
+    {
+      text: "Delete",
+      style: "destructive",
+      onPress: async () => {
+        await deleteTask();
+      },
+    },
+  ]
+);
   };
 
   return (
@@ -183,7 +304,7 @@ export default function TaskDetailScreen() {
               size={20}
               color="#64748B"
             />
-            <Text style={styles.infoText}>{dueDate}</Text>
+            <Text style={styles.infoText}>{formatDate(dueDate)}</Text>
           </View>
               <View style={styles.divider} />
 
@@ -218,7 +339,8 @@ export default function TaskDetailScreen() {
               pathname: "/create-task",
               params: {
                 taskId: String(params.taskId),
-                type: String("edit")
+                type: String("edit"),
+                status: String(status)
               },
             })
           }
@@ -232,8 +354,8 @@ export default function TaskDetailScreen() {
           activeOpacity={0.8}
           onPress={handleDelete}
         >
-          <Ionicons name="trash-outline" size={20} color="#DC2626" />
-          <Text style={styles.deleteButtonText}>Delete Task</Text>
+          {delTask? <ActivityIndicator size={20} color="#DC2626" /> : <Ionicons name="trash-outline" size={20} color="#DC2626" /> }
+          <Text style={styles.deleteButtonText}>{delTask? "Deleting ..." : "Delete Task"}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -272,6 +394,7 @@ export default function TaskDetailScreen() {
             {statusOptions.map((option) => {
               const selected = status === option;
               const colors = statusColors[option];
+              const loading = loadingStatus === option;
 
               return (
                 <TouchableOpacity
@@ -310,14 +433,15 @@ export default function TaskDetailScreen() {
                     </Text>
                   </View>
 
-                  {selected ? (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={23}
-                      color={colors.dot}
-                    />
-                  ) : (
-                    <View style={styles.unselectedCircle} />
+                  {loading ? ( <ActivityIndicator size="small" color={colors.dot} />
+                 ) : selected ? (
+                     <Ionicons
+                          name="checkmark-circle"
+                          size={23}
+                          color={colors.dot}
+                     />
+                ) : (
+                     <View style={styles.unselectedCircle} />
                   )}
                 </TouchableOpacity>
               );
