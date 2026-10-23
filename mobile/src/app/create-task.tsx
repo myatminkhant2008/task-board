@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store"
 import { API } from "../../api";
 import Toast from "react-native-toast-message";
+import { useTranslation } from "react-i18next";
 
 type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
 
@@ -58,6 +59,7 @@ export default function CreateTaskScreen() {
   const projectId = params.projectId;
   const [showPriorityOptions, setShowPriorityOptions] = useState(false);
   const [loading,setLoading] = useState(false)
+  const {t} = useTranslation();
 
   useEffect(() => {
     getTask();
@@ -91,8 +93,8 @@ export default function CreateTaskScreen() {
   catch(error : any) {
     Toast.show({
       type: "error",
-      text1: "Failed to Load Task",
-      text2: "Unable to fetch task. Please try again.",
+      text1: t("Failed to Load Task"),
+      text2: t("Unable to fetch task. Please try again."),
       position: "bottom"
     });
   }
@@ -103,8 +105,8 @@ export default function CreateTaskScreen() {
     if (!title.trim()) {
       Toast.show({
           type: "info",
-          text1: "Required",
-          text2: "Please enter a task title.",
+          text1: t("Required"),
+          text2: t("Please enter a task title."),
           position: "bottom"
       });
       return;
@@ -113,8 +115,8 @@ export default function CreateTaskScreen() {
     if (!description.trim()) {
       Toast.show({
           type: "info",
-          text1: "Required",
-          text2: "Please enter a description.",
+          text1: t("Required"),
+          text2: t("Please enter a description."),
           position: "bottom"
       });
       return;
@@ -123,8 +125,8 @@ export default function CreateTaskScreen() {
     if (!dueDate.trim()) {
       Toast.show({
           type: "info",
-          text1: "Required",
-          text2: "Please enter a due date.",
+          text1: t("Required"),
+          text2: t("Please enter a due date."),
           position: "bottom"
       });
       return;
@@ -135,8 +137,8 @@ export default function CreateTaskScreen() {
     if (!datePattern.test(dueDate)) {
       Toast.show({
           type: "info",
-          text1: "Invalid Date",
-          text2: "Please use YYYY-MM-DD format.",
+          text1: t("Invalid Date"),
+          text2: t("Please use YYYY-MM-DD format."),
           position: "bottom"
       });
       return;
@@ -159,8 +161,8 @@ export default function CreateTaskScreen() {
 
         Toast.show({
           type: "success",
-          text1: "Task Created",
-          text2: "Task has been created successfully.",
+          text1: t("Task Created"),
+          text2: t("Task has been created successfully."),
           position: "bottom"
         });
 
@@ -170,7 +172,7 @@ export default function CreateTaskScreen() {
         const message = error.response?.data
          Toast.show({
            type: "error",
-           text1: "Creation Failed",
+           text1: t("Creation Failed"),
            text2: message,
            position: "bottom"
          });
@@ -196,8 +198,8 @@ export default function CreateTaskScreen() {
 
         Toast.show({
           type: "success",
-          text1: "Task Updated",
-          text2: "Task has been updated successfully.",
+          text1: t("Task Updated"),
+          text2: t("Task has been updated successfully."),
           position: "bottom"
        });
 
@@ -207,7 +209,7 @@ export default function CreateTaskScreen() {
          const message = error.response?.data
          Toast.show({
            type: "error",
-           text1: "Update Failed",
+           text1: t("Update Failed"),
            text2: message,
            position: "bottom"
          });
@@ -242,7 +244,7 @@ export default function CreateTaskScreen() {
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>
-            {isCreate? "Create Task" : "Edit Task"}
+            {isCreate? t("Create Task") : t("Edit Task")}
           </Text>
         </View>
 
@@ -253,25 +255,25 @@ export default function CreateTaskScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          <Text style={styles.label}>Title</Text>
+          <Text style={styles.label}>{t("Title")}</Text>
 
           <TextInput
             style={styles.input}
-            placeholder="Enter your title"
+            placeholder={t("Enter task title")}
             placeholderTextColor="#9CA3AF"
             value={title}
             onChangeText={setTitle}
             returnKeyType="next"
           />
 
-          <Text style={styles.label}>Description</Text>
+          <Text style={styles.label}>{t("Description")}</Text>
 
           <TextInput
             style={[
               styles.input,
               styles.descriptionInput,
             ]}
-            placeholder="Enter your description"
+            placeholder={t("Enter task description")}
             placeholderTextColor="#9CA3AF"
             value={description}
             onChangeText={setDescription}
@@ -279,7 +281,7 @@ export default function CreateTaskScreen() {
             textAlignVertical="top"
           />
 
-          <Text style={styles.label}>Priority</Text>
+          <Text style={styles.label}>{t("Priority")}</Text>
 
           <TouchableOpacity
             style={styles.selectInput}
@@ -296,7 +298,7 @@ export default function CreateTaskScreen() {
               />
 
               <Text style={styles.selectText}>
-                {priorityLabels[priority]}
+                {t(priorityLabels[priority])}
               </Text>
             </View>
 
@@ -332,7 +334,7 @@ export default function CreateTaskScreen() {
                           },
                     ]}
                   >
-                    {priorityLabels[item]}
+                    {t(priorityLabels[item])}
                   </Text>
 
                   {priority === item && (
@@ -347,7 +349,7 @@ export default function CreateTaskScreen() {
             </View>
           )}
 
-          <Text style={styles.label}>Due Date</Text>
+          <Text style={styles.label}>{t("Due Date")}</Text>
 
           <View style={styles.dateInput}>
             <Ionicons
@@ -358,7 +360,7 @@ export default function CreateTaskScreen() {
 
             <TextInput
               style={styles.dateTextInput}
-              placeholder="YYYY-MM-DD"
+              placeholder={t("YYYY-MM-DD")}
               placeholderTextColor="#9CA3AF"
               value={dueDate}
               onChangeText={setDueDate}
@@ -374,7 +376,7 @@ export default function CreateTaskScreen() {
           >
             {loading? <ActivityIndicator size={"small"} color={"white"}/> : 
             <Text style={styles.saveButtonText}>
-              {isCreate? "Save" : "Save Changes"}
+              {isCreate? t("Save") : t("Save Changes")}
             </Text>}
           </TouchableOpacity>
         </ScrollView>

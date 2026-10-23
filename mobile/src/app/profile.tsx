@@ -14,11 +14,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store"
 import { API } from "../../api";
 import Toast from "react-native-toast-message";
+import { useTranslation } from "react-i18next";
 
 export default function ProfileScreen() {
   const [name,setName] = useState("...")
   const [email,setEmail] = useState("...")
   const [createdAt,setCreatedAt] = useState("")
+  const {t} = useTranslation();
   
   useEffect(() => {
     getUser();
@@ -50,23 +52,24 @@ export default function ProfileScreen() {
     catch(error : any) {
       Toast.show({
         type: "error",
-        text1: "Failed to Load Profile",
-        text2: "Unable to fetch your profile. Please try again.",
+        text1: t("Failed to Load Profile"),
+        text2: t("Unable to fetch your profile. Please try again."),
+        position: "bottom"
       });
     }
   }
 
   const handleLogout = () => {
     Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
+      t("Log Out"),
+      t("Are you sure you want to log out?"),
       [
         {
-          text: "Cancel",
+          text: t("Cancel"),
           style: "cancel",
         },
         {
-          text: "Log Out",
+          text: t("Log Out"),
           style: "destructive",
           onPress: async () => {
             await SecureStore.deleteItemAsync("token")
@@ -93,7 +96,7 @@ export default function ProfileScreen() {
                 />
         </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>My Profile</Text>
+          <Text style={styles.headerTitle}>{t("My Profile")}</Text>
 
         </View>
 
@@ -129,7 +132,7 @@ export default function ProfileScreen() {
             size={22}
             color="#DC2626"
           />
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Text style={styles.logoutText}>{t("Log Out")}</Text>
         </TouchableOpacity>
         </View>
 

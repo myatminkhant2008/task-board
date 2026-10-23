@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store"
 import { API } from "../../api";
 import Toast from "react-native-toast-message";
+import { useTranslation } from "react-i18next";
 
 const statusFilters = [
   { label: "All", value: "" },
@@ -41,6 +42,7 @@ export default function TaskListScreen() {
   const [totalPage,setTotalPage] = useState(0)
   const [refresh,setRefresh] = useState(false)
   const [taskCount,setTaskCount] = useState(0)
+  const {t} = useTranslation();
 
   useFocusEffect(
     useCallback(() => {
@@ -96,8 +98,8 @@ export default function TaskListScreen() {
     catch (error : any) {
       Toast.show({
         type: "error",
-        text1: "Failed to Load Tasks",
-        text2: "Unable to fetch tasks. Please try again.",
+        text1: t("Failed to Load Tasks"),
+        text2: t("Unable to fetch tasks. Please try again."),
         position: "bottom"
       });
     }
@@ -316,7 +318,7 @@ export default function TaskListScreen() {
 
           <TextInput
             style={styles.searchInput}
-            placeholder="Search your tasks"
+            placeholder={t("Search your tasks")}
             placeholderTextColor="#94A3B8"
             returnKeyType="search"
             value={searchText}
@@ -365,7 +367,7 @@ export default function TaskListScreen() {
                     isSelected && styles.activeFilterText,
                   ]}
                 >
-                  {item.label}
+                  {t(item.label)}
                 </Text>
               </TouchableOpacity>
             );
@@ -375,7 +377,7 @@ export default function TaskListScreen() {
         <View style={styles.listHeader}>
           <Text style={styles.taskCount}>
             {taskCount}{" "}
-            {taskCount > 1 ? "tasks" : "task"}
+            {taskCount > 1 ? t("tasks") : t("task")}
           </Text>
         </View>
 
@@ -394,11 +396,11 @@ export default function TaskListScreen() {
               />
 
               <Text style={styles.emptyText}>
-                No tasks found
+                {t("No tasks found")}
               </Text>
 
               <Text style={styles.emptySubtext}>
-                Try another search or status filter.
+                {t("Try another search or status filter.")}
               </Text>
             </View>
           }

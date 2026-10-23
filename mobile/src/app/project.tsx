@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -6,6 +5,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  Pressable,
   StatusBar,
   StyleSheet,
   Text,
@@ -17,6 +17,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store"
 import { API } from "../../api";
 import Toast from "react-native-toast-message";
+import { useTranslation } from "react-i18next";
+import { Ionicons} from "@expo/vector-icons";
+
+const languages = [
+  { code: "mm", flag: "🇲🇲", name: "မြန်မာ", sub: "Myanmar" },
+  { code: "en", flag: "🇬🇧", name: "English", sub: "English" }
+]
 
 export default function ProjectsScreen() {
 const [projects, setProjects] = useState([])
@@ -25,6 +32,10 @@ const [projectName, setProjectName] = useState("");
 const [projectDescription, setProjectDescription] = useState("");
 const [loading,setLoading] = useState(false)
 const [upload,setUpload] = useState(false)
+const {t,i18n} = useTranslation();
+const [visiabel,setVisiable] = useState(false)
+
+const current = languages.find((item) => item.code === i18n.language);
 
 useEffect(() => {
   getproject()
@@ -45,20 +56,22 @@ const formatDate = (createdAt: string) => {
     if (!projectName.trim()) {
        Toast.show({
          type: "info",
-         text1: "Required",
-         text2: "Please enter a project name.",
+         text1: t("Required"),
+         text2: t("Please enter a project name."),
          position: "bottom"
         });
+       setModalVisible(false)
        return;
     }
 
     if (!projectDescription.trim()) {
        Toast.show({
          type: "info",
-         text1: "Required",
-         text2: "Please enter a project description.",
+         text1: t("Required"),
+         text2: t("Please enter a project description."),
          position: "bottom"
         });
+        setModalVisible(false)
         return;
     }
 
@@ -75,8 +88,8 @@ const formatDate = (createdAt: string) => {
 
       Toast.show({
         type: "success",
-        text1: "Project Created",
-        text2: "Your project has been created successfully!",
+        text1: t("Project Created"),
+        text2: t("Your project has been created successfully!"),
         position: "bottom"
       });
     }
@@ -84,7 +97,7 @@ const formatDate = (createdAt: string) => {
       const message = error.response?.data
       Toast.show({
         type: "error",
-        text1: "Project Creation Failed",
+        text1: t("Project Creation Failed"),
         text2: message,
         position: "bottom"
       });
@@ -109,8 +122,8 @@ const formatDate = (createdAt: string) => {
     catch(error : any) {
       Toast.show({
         type: "error",
-        text1: "Failed to Load Projects",
-        text2: "Unable to fetch projects. Please try again.",
+        text1: t("Failed to Load Projects"),
+        text2: t("Unable to fetch projects. Please try again."),
         position: "bottom"
       });
     }
@@ -169,11 +182,17 @@ const formatDate = (createdAt: string) => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Task Board</Text>
 
-        <TouchableOpacity
+        <View style={styles.trigger}>
+          <TouchableOpacity onPress={() => setVisiable(true)}>
+            <Text style={styles.flag}>{current?.flag}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
           onPress={() => router.push("/profile")}
-        >
-          <Ionicons name="person-circle-outline" size={30} color="#374151" />
-        </TouchableOpacity>
+          >
+             <Ionicons name="person-circle-outline" size={30} color="#374151" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -183,10 +202,10 @@ const formatDate = (createdAt: string) => {
         >
           <Ionicons name="add" size={24} color="#FFFFFF" />
 
-          <Text style={styles.createButtonText}>New Project</Text>
+          <Text style={styles.createButtonText}>{t("New Project")}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>Your Projects</Text>
+        <Text style={styles.sectionTitle}>{t("Your Projects")}</Text>
 
         <FlatList
           data={projects}
@@ -198,15 +217,55 @@ const formatDate = (createdAt: string) => {
             <View style={styles.emptyContainer}>
               <Ionicons name="folder-open-outline" size={55} color="#CBD5E1" />
 
-              <Text style={styles.emptyText}>No projects yet</Text>
+              <Text style={styles.emptyText}>{t("No projects yet")}</Text>
 
-              <Text style={styles.emptySubText}>Create your first project</Text>
+              <Text style={styles.emptySubText}>{t("Create your first project")}</Text>
             </View>
           }
           refreshing={loading}
           onRefresh={handleRefresh}
         />
       </View>
+
+<Modal
+  visible={visiabel}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setVisiable(false)}
+>
+  <Pressable style={styles.overlay} onPress={() => setVisiable(false)}>
+    <View style={styles.menu}>
+      {languages.map((item) => (
+        <Pressable
+         key={item.code}
+         style={styles.item}
+         onPress={() => {
+           i18n.changeLanguage(item.code)
+           setVisiable(false)
+         }}
+        >
+          <Text style={styles.itemFlag}>{item.flag}</Text>
+
+          <View style={styles.languageText}>
+            <Text style={styles.name}>
+              {item.name}
+            </Text>
+            <Text style={styles.sub}>
+              {t(item.sub)}
+            </Text>
+          </View>
+
+          {i18n.language === item.code && 
+           (
+            <Ionicons name="checkmark" size={24} color="#3976C5"/>
+           )
+          }
+        </Pressable>
+      ))}
+    </View>
+  </Pressable>
+
+</Modal>
       
 <Modal
   visible={modalVisible}
@@ -217,7 +276,7 @@ const formatDate = (createdAt: string) => {
   <View style={styles.modalOverlay}>
     <View style={styles.modalContainer}>
       <View style={styles.modalHeader}>
-        <Text style={styles.modalTitle}>Create Project</Text>
+        <Text style={styles.modalTitle}>{t("Create Project")}</Text>
 
         <TouchableOpacity
           onPress={() => setModalVisible(false)}
@@ -226,19 +285,19 @@ const formatDate = (createdAt: string) => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.label}>Project Name</Text>
+      <Text style={styles.label}>{t("Project Name")}</Text>
       <TextInput
         style={styles.modalInput}
-        placeholder="Enter project name"
+        placeholder={t("Enter project name")}
         value={projectName}
         onChangeText={setProjectName}
         maxLength={100}
       />
 
-      <Text style={styles.label}>Description</Text>
+      <Text style={styles.label}>{t("Description")}</Text>
       <TextInput
         style={[styles.modalInput, styles.descriptionInput]}
-        placeholder="Enter project description"
+        placeholder={t("Enter project description")}
         value={projectDescription}
         onChangeText={setProjectDescription}
         multiline
@@ -251,7 +310,7 @@ const formatDate = (createdAt: string) => {
           style={styles.createButton}
           onPress={() => {handleCreateProject()}}
         >
-          {upload? <ActivityIndicator size={"small"} color={"white"}/> : <Text style={styles.createButtonText}>Create Project</Text> }
+          {upload? <ActivityIndicator size={"small"} color={"white"}/> : <Text style={styles.createButtonText}>{t("Create Project")}</Text> }
         </TouchableOpacity>
       </View>
     </View>
@@ -467,5 +526,62 @@ addButton: {
 addButtonText: {
   color: "#FFFFFF",
   fontWeight: "600",
+},
+
+trigger: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 10,
+},
+
+flag: { 
+  fontSize: 21
+},
+  
+overlay: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "rgba(0,0,0,0.08)",
+},
+ 
+menu: {
+  width: 280,
+  backgroundColor: "#FFFFFF",
+  borderRadius: 20,
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  elevation: 10,
+  shadowColor: "#000",
+  shadowOpacity: 0.12,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+},
+  
+item: {
+  minHeight: 78,
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 6,
+  gap: 12,
+},
+ 
+itemFlag: { 
+  fontSize: 23 
+},
+  
+languageText: { 
+  flex: 1, 
+  gap: 3 
+},
+ 
+name: {
+  fontSize: 18,
+  color: "#6B7280",
+},
+  
+sub: {
+  fontSize: 12,
+  color: "#9CA3AF",
 },
 });
