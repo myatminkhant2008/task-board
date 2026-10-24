@@ -1,6 +1,8 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -9,15 +11,70 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { API } from "../../api";
+import * as SecureStore from "expo-secure-store"
+import Toast from "react-native-toast-message";
+import { useTranslation } from "react-i18next";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading,setLoading] = useState(false)
+  const {t} = useTranslation();
 
-  const handleLogin = () => {
-    console.log("Email:", email);
-    console.log("Password:", password);
-    router.replace("/project");
+  const handleLogin = async () => {
+    if (!email.trim()) {
+          Toast.show({
+             type: "info",
+             text1: t("Required"),
+             text2: t("Please enter your email."),
+             position: "bottom"
+          });
+         return;
+    }
+
+    if (!password.trim()) {
+          Toast.show({
+             type: "info",
+             text1: t("Required"),
+             text2: t("Please enter your password."),
+             position: "bottom"
+          });
+         return;
+    }
+
+    setLoading(true)
+    try {
+      const response = await API.post("/auth/login",{
+        email: email,
+        password_hash: password
+      })
+      const token = response.data.token
+      await SecureStore.setItemAsync("token",token);
+
+      Toast.show({
+        type: "success",
+        text1: t("Login Successful"),
+        text2: t("Welcome back!"),
+        position: "bottom"
+      });
+      
+      router.replace("/project")
+    }
+    catch (error: any) {
+    const message = error.response?.data;
+
+    Toast.show({
+      type: "error",
+      text1: t("Login Failed"),
+      text2: message,
+      position: "bottom"
+    });
+    
+    }
+    finally {
+      setLoading(false)
+    }
   };
 
   return (
@@ -26,11 +83,11 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.form}>
-        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.title}>{t("Welcome Back")}</Text>
 
-        <Text style={styles.subtitle}>Log in to manage your projects and tasks.</Text>
+        <Text style={styles.subtitle}>{t("Log in to manage your projects and tasks.")}</Text>
 
-        <Text style={styles.label}>Email</Text>
+        <Text style={styles.label}>{t("Email")}</Text>
 
         <TextInput
           style={styles.input}
@@ -42,11 +99,11 @@ export default function LoginScreen() {
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>{t("Password")}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Enter your password"
+          placeholder={t("Enter your password")}
           placeholderTextColor="#9CA3AF"
           value={password}
           onChangeText={setPassword}
@@ -54,13 +111,14 @@ export default function LoginScreen() {
         />
 
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login</Text>
+          {loading? <ActivityIndicator size={"small"} color="white"/> : <Text style={styles.buttonText}>{t("Login")}</Text> }
+          
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push("/register")}>
           <Text style={styles.link}>
-            Don't have an account?{" "}
-            <Text style={styles.linkBold}>Create Account</Text>
+            {t("Don't have an account?")}{" "}
+            <Text style={styles.linkBold}>{t("Create Account")}</Text>
           </Text>
         </TouchableOpacity>
       </View>

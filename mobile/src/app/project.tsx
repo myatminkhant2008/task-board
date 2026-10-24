@@ -1,10 +1,11 @@
-import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
+  Pressable,
   StatusBar,
   StyleSheet,
   Text,
@@ -13,42 +14,148 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store"
+import { API } from "../../api";
+import Toast from "react-native-toast-message";
+import { useTranslation } from "react-i18next";
+import { Ionicons} from "@expo/vector-icons";
 
-interface Project {
-  id: string;
+const languages = [
+  { code: "mm", flag: "🇲🇲", name: "မြန်မာ", sub: "Myanmar" },
+  { code: "en", flag: "🇬🇧", name: "English", sub: "English" }
+]
+
+type Project = {
+  id: number;
   name: string;
   description: string;
-  createdAt: string;
-}
+  created_at: string;
+};
+
 
 export default function ProjectsScreen() {
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: "1",
-      name: "Mobile App",
-      description: "A mobile application project designed to help users manage tasks, track progress, and organize team activities efficiently.",
-      createdAt: "02 Oct 2026",
-    },
-    {
-      id: "2",
-      name: "Website",
-      description: "Website app test ",
-      createdAt: "01 Oct 2026",
-    },
-    {
-      id: "3",
-      name: "Marketing",
-      description: "Marketing app test ",
-      createdAt: "30 Sep 2026",
-    },
-  ]);
+const [projects, setProjects] = useState<Project[]>([])
 const [modalVisible, setModalVisible] = useState(false);
 const [projectName, setProjectName] = useState("");
 const [projectDescription, setProjectDescription] = useState("");
+const [loading,setLoading] = useState(false)
+const [upload,setUpload] = useState(false)
+const {t,i18n} = useTranslation();
+const [visiabel,setVisiable] = useState(false)
 
-  const handleCreateProject = () => {
-    Alert.alert("Project", "Create project coming soon")
+const current = languages.find((item) => item.code === i18n.language);
+
+useEffect(() => {
+  getproject()
+},[])
+
+const formatDate = (createdAt: string) => {
+  const date = new Date(createdAt);
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+  const handleCreateProject = async () => {
+    const token = await SecureStore.getItemAsync("token")
+    if (!projectName.trim()) {
+       Toast.show({
+         type: "info",
+         text1: t("Required"),
+         text2: t("Please enter a project name."),
+         position: "bottom"
+        });
+       setModalVisible(false)
+       return;
+    }
+
+    if (!projectDescription.trim()) {
+       Toast.show({
+         type: "info",
+         text1: t("Required"),
+         text2: t("Please enter a project description."),
+         position: "bottom"
+        });
+        setModalVisible(false)
+        return;
+    }
+
+    setUpload(true)
+    try {
+      await API.post("/projects", {
+        name: projectName,
+        description: projectDescription
+      },{
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      setModalVisible(false)
+      setProjectName("")
+      setProjectDescription("")
+
+      Toast.show({
+        type: "success",
+        text1: t("Project Created"),
+        text2: t("Your project has been created successfully!"),
+        position: "bottom"
+      });
+    }
+    catch(error : any) {
+      const message = error.response?.data
+      Toast.show({
+        type: "error",
+        text1: t("Project Creation Failed"),
+        text2: message,
+        position: "bottom"
+      });
+    }
+    finally {
+      setUpload(false)
+    }
   };
+
+  
+const getproject = async () => {
+  setLoading(true);
+
+  try {
+    const token = await SecureStore.getItemAsync("token");
+
+    const response = await API.get("/projects", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const sortedProjects = [...response.data].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime()
+    );
+
+    setProjects(sortedProjects);
+  } catch (error: any) {
+    Toast.show({
+      type: "error",
+      text1: t("Failed to Load Projects"),
+      text2: t("Unable to fetch projects. Please try again."),
+      position: "bottom",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleRefresh = () => {
+    setLoading(true)
+    getproject()
+    setLoading(false)
+  }
 
   const handleOpenProject = (
     projectId: string,
@@ -61,7 +168,7 @@ const [projectDescription, setProjectDescription] = useState("");
     });
   };
 
-  const renderProject = ({ item }: { item: Project }) => (
+  const renderProject = ({ item }: { item : any }) => (
     <TouchableOpacity
       style={styles.projectCard}
       onPress={() => handleOpenProject(item.id, item.name, item.description)}
@@ -79,7 +186,7 @@ const [projectDescription, setProjectDescription] = useState("");
         <View style={styles.dateRow}>
           <Ionicons name="calendar-outline" size={14} color="#9CA3AF" />
 
-          <Text style={styles.projectDate}>{item.createdAt}</Text>
+          <Text style={styles.projectDate}>{formatDate(item.created_at)}</Text>
         </View>
       </View>
 
@@ -94,11 +201,17 @@ const [projectDescription, setProjectDescription] = useState("");
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Task Board</Text>
 
-        <TouchableOpacity
+        <View style={styles.trigger}>
+          <TouchableOpacity onPress={() => setVisiable(true)}>
+            <Text style={styles.flag}>{current?.flag}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
           onPress={() => router.push("/profile")}
-        >
-          <Ionicons name="person-circle-outline" size={30} color="#374151" />
-        </TouchableOpacity>
+          >
+             <Ionicons name="person-circle-outline" size={30} color="#374151" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -108,14 +221,14 @@ const [projectDescription, setProjectDescription] = useState("");
         >
           <Ionicons name="add" size={24} color="#FFFFFF" />
 
-          <Text style={styles.createButtonText}>New Project</Text>
+          <Text style={styles.createButtonText}>{t("New Project")}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>Your Projects</Text>
+        <Text style={styles.sectionTitle}>{t("Your Projects")}</Text>
 
         <FlatList
           data={projects}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item: Project) => item.id.toString()}
           renderItem={renderProject}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
@@ -123,13 +236,55 @@ const [projectDescription, setProjectDescription] = useState("");
             <View style={styles.emptyContainer}>
               <Ionicons name="folder-open-outline" size={55} color="#CBD5E1" />
 
-              <Text style={styles.emptyText}>No projects yet</Text>
+              <Text style={styles.emptyText}>{t("No projects yet")}</Text>
 
-              <Text style={styles.emptySubText}>Create your first project</Text>
+              <Text style={styles.emptySubText}>{t("Create your first project")}</Text>
             </View>
           }
+          refreshing={loading}
+          onRefresh={handleRefresh}
         />
       </View>
+
+<Modal
+  visible={visiabel}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setVisiable(false)}
+>
+  <Pressable style={styles.overlay} onPress={() => setVisiable(false)}>
+    <View style={styles.menu}>
+      {languages.map((item) => (
+        <Pressable
+         key={item.code}
+         style={styles.item}
+         onPress={() => {
+           i18n.changeLanguage(item.code)
+           setVisiable(false)
+         }}
+        >
+          <Text style={styles.itemFlag}>{item.flag}</Text>
+
+          <View style={styles.languageText}>
+            <Text style={styles.name}>
+              {item.name}
+            </Text>
+            <Text style={styles.sub}>
+              {t(item.sub)}
+            </Text>
+          </View>
+
+          {i18n.language === item.code && 
+           (
+            <Ionicons name="checkmark" size={24} color="#3976C5"/>
+           )
+          }
+        </Pressable>
+      ))}
+    </View>
+  </Pressable>
+
+</Modal>
       
 <Modal
   visible={modalVisible}
@@ -140,7 +295,7 @@ const [projectDescription, setProjectDescription] = useState("");
   <View style={styles.modalOverlay}>
     <View style={styles.modalContainer}>
       <View style={styles.modalHeader}>
-        <Text style={styles.modalTitle}>Create Project</Text>
+        <Text style={styles.modalTitle}>{t("Create Project")}</Text>
 
         <TouchableOpacity
           onPress={() => setModalVisible(false)}
@@ -149,19 +304,19 @@ const [projectDescription, setProjectDescription] = useState("");
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.label}>Project Name</Text>
+      <Text style={styles.label}>{t("Project Name")}</Text>
       <TextInput
         style={styles.modalInput}
-        placeholder="Enter project name"
+        placeholder={t("Enter project name")}
         value={projectName}
         onChangeText={setProjectName}
         maxLength={100}
       />
 
-      <Text style={styles.label}>Description</Text>
+      <Text style={styles.label}>{t("Description")}</Text>
       <TextInput
         style={[styles.modalInput, styles.descriptionInput]}
-        placeholder="Enter project description"
+        placeholder={t("Enter project description")}
         value={projectDescription}
         onChangeText={setProjectDescription}
         multiline
@@ -174,7 +329,7 @@ const [projectDescription, setProjectDescription] = useState("");
           style={styles.createButton}
           onPress={() => {handleCreateProject()}}
         >
-          <Text style={styles.createButtonText}>Create Project</Text>
+          {upload? <ActivityIndicator size={"small"} color={"white"}/> : <Text style={styles.createButtonText}>{t("Create Project")}</Text> }
         </TouchableOpacity>
       </View>
     </View>
@@ -390,5 +545,62 @@ addButton: {
 addButtonText: {
   color: "#FFFFFF",
   fontWeight: "600",
+},
+
+trigger: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 10,
+},
+
+flag: { 
+  fontSize: 21
+},
+  
+overlay: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "rgba(0,0,0,0.08)",
+},
+ 
+menu: {
+  width: 280,
+  backgroundColor: "#FFFFFF",
+  borderRadius: 20,
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  elevation: 10,
+  shadowColor: "#000",
+  shadowOpacity: 0.12,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+},
+  
+item: {
+  minHeight: 78,
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 6,
+  gap: 12,
+},
+ 
+itemFlag: { 
+  fontSize: 23 
+},
+  
+languageText: { 
+  flex: 1, 
+  gap: 3 
+},
+ 
+name: {
+  fontSize: 18,
+  color: "#6B7280",
+},
+  
+sub: {
+  fontSize: 12,
+  color: "#9CA3AF",
 },
 });

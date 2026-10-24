@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +15,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store"
+import { API } from "../../api";
+import Toast from "react-native-toast-message";
+import { useTranslation } from "react-i18next";
 
 type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
 
@@ -41,6 +46,7 @@ export default function CreateTaskScreen() {
     type: string,
     projectId: string,
     taskId: string,
+    status: string,
   }>();
 
   const isCreate = params.type === "create";
@@ -52,12 +58,14 @@ export default function CreateTaskScreen() {
   const taskId = params.taskId;
   const projectId = params.projectId;
   const [showPriorityOptions, setShowPriorityOptions] = useState(false);
+  const [loading,setLoading] = useState(false)
+  const {t} = useTranslation();
 
   useEffect(() => {
     getTask();
   },[])
 
-  const getTask = () => {
+  const getTask = async () => {
     
   if (isCreate) {
     setTitle("");
@@ -67,50 +75,148 @@ export default function CreateTaskScreen() {
     return;
   }
 
+  try {
+    const token = await SecureStore.getItemAsync("token")
+    const response = await API.get(`/tasks/${taskId}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+
+    const data = response.data;
+
+    setTitle(data.title);
+    setDescription(data.description);
+    setPriority(data.priority);
+    setDueDate(data.due_date)
+  }
+  catch(error : any) {
+    Toast.show({
+      type: "error",
+      text1: t("Failed to Load Task"),
+      text2: t("Unable to fetch task. Please try again."),
+      position: "bottom"
+    });
+  }
+
 };
   
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert("Required", "Please enter a task title.");
+      Toast.show({
+          type: "info",
+          text1: t("Required"),
+          text2: t("Please enter a task title."),
+          position: "bottom"
+      });
       return;
     }
 
     if (!description.trim()) {
-      Alert.alert("Required", "Please enter a description.");
+      Toast.show({
+          type: "info",
+          text1: t("Required"),
+          text2: t("Please enter a description."),
+          position: "bottom"
+      });
       return;
     }
 
     if (!dueDate.trim()) {
-      Alert.alert("Required", "Please enter a due date.");
+      Toast.show({
+          type: "info",
+          text1: t("Required"),
+          text2: t("Please enter a due date."),
+          position: "bottom"
+      });
       return;
     }
 
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
     if (!datePattern.test(dueDate)) {
-      Alert.alert(
-        "Invalid Date",
-        "Please use YYYY-MM-DD format."
-      );
+      Toast.show({
+          type: "info",
+          text1: t("Invalid Date"),
+          text2: t("Please use YYYY-MM-DD format."),
+          position: "bottom"
+      });
       return;
     }
 
     if(isCreate) {
-        Alert.alert("Success", "Task saved successfully.", [
-      {
-        text: "OK",
-        onPress: () => router.back(),
-      },
-    ]);
+       setLoading(true)
+       try {
+        const token = await SecureStore.getItemAsync("token")
+        await API.post(`/projects/${projectId}/tasks`, {
+          title: title,
+          description: description,
+          priority: priority,
+          due_date: dueDate
+        }, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        })
+
+        Toast.show({
+          type: "success",
+          text1: t("Task Created"),
+          text2: t("Task has been created successfully."),
+          position: "bottom"
+        });
+
+        router.back();
+       }
+       catch (error : any) {
+        const message = error.response?.data
+         Toast.show({
+           type: "error",
+           text1: t("Creation Failed"),
+           text2: message,
+           position: "bottom"
+         });
+       }
+       finally {
+        setLoading(false)
+       }
     }
     else {
-        Alert.alert("Success", "Task edit saved successfully.", [
-      {
-        text: "OK",
-        onPress: () => router.back(),
-      },
-    ]);
+      setLoading(true)
+       try {
+        const token = await SecureStore.getItemAsync("token")
+        await API.put(`/tasks/${taskId}`, {
+          title: title,
+          description: description,
+          priority: priority,
+          due_date: dueDate
+        }, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        })
+
+        Toast.show({
+          type: "success",
+          text1: t("Task Updated"),
+          text2: t("Task has been updated successfully."),
+          position: "bottom"
+       });
+
+        router.back();
+       }
+       catch (error : any) {
+         const message = error.response?.data
+         Toast.show({
+           type: "error",
+           text1: t("Update Failed"),
+           text2: message,
+           position: "bottom"
+         });
+       }
+       finally {
+        setLoading(false)
+       }
     }
   };
 
@@ -138,7 +244,7 @@ export default function CreateTaskScreen() {
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>
-            {isCreate? "Create Task" : "Edit Task"}
+            {isCreate? t("Create Task") : t("Edit Task")}
           </Text>
         </View>
 
@@ -149,25 +255,25 @@ export default function CreateTaskScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          <Text style={styles.label}>Title</Text>
+          <Text style={styles.label}>{t("Title")}</Text>
 
           <TextInput
             style={styles.input}
-            placeholder="Enter your title"
+            placeholder={t("Enter task title")}
             placeholderTextColor="#9CA3AF"
             value={title}
             onChangeText={setTitle}
             returnKeyType="next"
           />
 
-          <Text style={styles.label}>Description</Text>
+          <Text style={styles.label}>{t("Description")}</Text>
 
           <TextInput
             style={[
               styles.input,
               styles.descriptionInput,
             ]}
-            placeholder="Enter your description"
+            placeholder={t("Enter task description")}
             placeholderTextColor="#9CA3AF"
             value={description}
             onChangeText={setDescription}
@@ -175,7 +281,7 @@ export default function CreateTaskScreen() {
             textAlignVertical="top"
           />
 
-          <Text style={styles.label}>Priority</Text>
+          <Text style={styles.label}>{t("Priority")}</Text>
 
           <TouchableOpacity
             style={styles.selectInput}
@@ -192,7 +298,7 @@ export default function CreateTaskScreen() {
               />
 
               <Text style={styles.selectText}>
-                {priorityLabels[priority]}
+                {t(priorityLabels[priority])}
               </Text>
             </View>
 
@@ -228,7 +334,7 @@ export default function CreateTaskScreen() {
                           },
                     ]}
                   >
-                    {priorityLabels[item]}
+                    {t(priorityLabels[item])}
                   </Text>
 
                   {priority === item && (
@@ -243,7 +349,7 @@ export default function CreateTaskScreen() {
             </View>
           )}
 
-          <Text style={styles.label}>Due Date</Text>
+          <Text style={styles.label}>{t("Due Date")}</Text>
 
           <View style={styles.dateInput}>
             <Ionicons
@@ -254,7 +360,7 @@ export default function CreateTaskScreen() {
 
             <TextInput
               style={styles.dateTextInput}
-              placeholder="YYYY-MM-DD"
+              placeholder={t("YYYY-MM-DD")}
               placeholderTextColor="#9CA3AF"
               value={dueDate}
               onChangeText={setDueDate}
@@ -268,9 +374,10 @@ export default function CreateTaskScreen() {
             onPress={handleSave}
             activeOpacity={0.8}
           >
+            {loading? <ActivityIndicator size={"small"} color={"white"}/> : 
             <Text style={styles.saveButtonText}>
-              {isCreate? "Save" : "Save Changes"}
-            </Text>
+              {isCreate? t("Save") : t("Save Changes")}
+            </Text>}
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>

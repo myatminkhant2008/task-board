@@ -1,8 +1,9 @@
 
 import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -14,6 +15,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { API } from "../../api";
+import * as SecureStore from "expo-secure-store"
+import Toast from "react-native-toast-message";
+import { useTranslation } from "react-i18next";
 
 type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
 type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
@@ -69,23 +74,145 @@ export default function TaskDetailScreen() {
   }>();
 
   const [status, setStatus] = useState<TaskStatus>(params.status as TaskStatus);
-  const [title] = useState(params.title);
-  const [description] = useState(params.description);
-  const [priority] = useState<TaskPriority>(params.priority as TaskPriority);
-  const [dueDate] = useState(params.due_date)
+  const [title,setTitle] = useState(params.title);
+  const [description,setDescription] = useState(params.description);
+  const [priority,setPriority] = useState<TaskPriority>(params.priority as TaskPriority);
+  const [dueDate,setDuedate] = useState(params.due_date)
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
+  const [delTask,setDelTask] = useState(false)
+  const {t} = useTranslation();
 
-  const handleStatusChange = (newStatus: TaskStatus) => {
-    setStatus(newStatus);
-    setShowStatusModal(false);
+  useFocusEffect(
+    useCallback(() => {
+      getTask();
+    },[])
+  )
+
+  const formatDate = (createdAt: string) => {
+    const date = new Date(createdAt);
+
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+     });
   };
 
+  const getTask = async () => {
+    try {
+      const token = await SecureStore.getItemAsync("token")
+      const response = await API.get(`/tasks/${params.taskId}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+  
+      const data = response.data;
+  
+      setStatus(data.status as TaskStatus)
+      setTitle(data.title)
+      setDescription(data.description)
+      setPriority(data.priority as TaskPriority)
+      setDuedate(data.due_date)
+    }
+    catch(error : any) {
+      Toast.show({
+          type: "error",
+          text1: t("Failed to Load Tasks"),
+          text2: t("Unable to fetch tasks. Please try again."),
+          position: "bottom"
+      });
+    }
+  
+  };
+
+  const handleStatusChange = async (newStatus: TaskStatus) => {
+    setLoadingStatus(newStatus)
+    try {
+      const token = await SecureStore.getItemAsync("token")
+      await API.patch(`tasks/${params.taskId}/status`, {
+        status: newStatus
+      },{
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      Toast.show({
+        type: "success",
+        text1: t("Status Updated"),
+        text2: t("Task status has been changed successfully."),
+        position: "bottom"
+      });
+
+      setStatus(newStatus);
+      setShowStatusModal(false);
+    }
+    catch (error : any) {
+      const message = error.response?.data
+      Toast.show({
+        type: "error",
+        text1: t("Update Failed"),
+        text2: message,
+        position: "bottom"
+      });
+      setShowStatusModal(false);
+    }
+    finally {
+      setLoadingStatus(null)
+    }
+  };
+
+  const deleteTask = async () => {
+    setDelTask(true)
+    try {
+      const token = await SecureStore.getItemAsync("token")
+      await API.delete(`/tasks/${params.taskId}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+
+    Toast.show({
+       type: "success",
+       text1: t("Task Deleted"),
+       text2: t("Task has been deleted successfully."),
+       position: "bottom"
+    });
+     router.back();
+    }
+    catch {
+      Toast.show({
+        type: "error",
+        text1: t("Delete Failed"),
+        text2: t("Failed to delete task. Please try again."),
+        position: "bottom"
+     });
+    }
+    finally {
+      setDelTask(false)
+    }
+  }
+
   const handleDelete = () => {
-    Alert.alert(
-      "Delete Task",
-      "Delete functionality is not connected yet.",
-      [{ text: "OK" }]
-    );
+   Alert.alert(
+  t("Delete Task"),
+  t("Are you sure you want to delete this task?"),
+  [
+    {
+      text: t("Cancel"),
+      style: "cancel",
+    },
+    {
+      text: t("Delete"),
+      style: "destructive",
+      onPress: async () => {
+        await deleteTask();
+      },
+    },
+  ]
+);
   };
 
   return (
@@ -103,7 +230,7 @@ export default function TaskDetailScreen() {
           <Ionicons name="arrow-back" size={23} color="#0F172A" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Task Details</Text>
+        <Text style={styles.headerTitle}>{t("Task Details")}</Text>
       </View>
 
       <ScrollView
@@ -134,7 +261,7 @@ export default function TaskDetailScreen() {
                   { color: statusColors[status].text },
                 ]}
               >
-                {statusLabels[status]}
+                {t(statusLabels[status])}
               </Text>
 
               <Ionicons
@@ -150,12 +277,12 @@ export default function TaskDetailScreen() {
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Description</Text>
+          <Text style={styles.sectionTitle}>{t("Description")}</Text>
           <Text style={styles.description}>{description}</Text>
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Priority</Text>
+          <Text style={styles.sectionTitle}>{t("Priority")}</Text>
           <View style={styles.infoRow}>
             <Ionicons
               name="flag-outline"
@@ -169,13 +296,13 @@ export default function TaskDetailScreen() {
                 { color: priorityColors[priority] },
               ]}
             >
-              {priority.charAt(0) + priority.slice(1).toLowerCase()}
+              {t(priority.charAt(0) + priority.slice(1).toLowerCase())}
             </Text>
           </View>
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Due Date</Text>
+          <Text style={styles.sectionTitle}>{t("Due Date")}</Text>
 
           <View style={styles.infoRow}>
             <Ionicons
@@ -183,11 +310,11 @@ export default function TaskDetailScreen() {
               size={20}
               color="#64748B"
             />
-            <Text style={styles.infoText}>{dueDate}</Text>
+            <Text style={styles.infoText}>{formatDate(dueDate)}</Text>
           </View>
               <View style={styles.divider} />
 
-              <Text style={styles.sectionTitle}>Task ID</Text>
+              <Text style={styles.sectionTitle}>{t("Task ID")}</Text>
 
               <View style={styles.infoRow}>
                 <Ionicons
@@ -206,7 +333,7 @@ export default function TaskDetailScreen() {
             color="#2563EB"
           />
           <Text style={styles.hintText}>
-            Tap the status badge to change the task status.
+            {t("Tap the status badge to change the task status.")}
           </Text>
         </View>
 
@@ -218,13 +345,14 @@ export default function TaskDetailScreen() {
               pathname: "/create-task",
               params: {
                 taskId: String(params.taskId),
-                type: String("edit")
+                type: String("edit"),
+                status: String(status)
               },
             })
           }
         >
           <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.editButtonText}>Edit Task</Text>
+          <Text style={styles.editButtonText}>{t("Edit Task")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -232,8 +360,8 @@ export default function TaskDetailScreen() {
           activeOpacity={0.8}
           onPress={handleDelete}
         >
-          <Ionicons name="trash-outline" size={20} color="#DC2626" />
-          <Text style={styles.deleteButtonText}>Delete Task</Text>
+          {delTask? <ActivityIndicator size={20} color="#DC2626" /> : <Ionicons name="trash-outline" size={20} color="#DC2626" /> }
+          <Text style={styles.deleteButtonText}>{delTask? t("Deleting") : t("Delete Task")}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -255,9 +383,9 @@ export default function TaskDetailScreen() {
 
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>Change Status</Text>
+                <Text style={styles.modalTitle}>{t("Change Status")}</Text>
                 <Text style={styles.modalSubtitle}>
-                  Select the current task status
+                  {t("Select the current task status")}
                 </Text>
               </View>
 
@@ -272,6 +400,7 @@ export default function TaskDetailScreen() {
             {statusOptions.map((option) => {
               const selected = status === option;
               const colors = statusColors[option];
+              const loading = loadingStatus === option;
 
               return (
                 <TouchableOpacity
@@ -299,25 +428,26 @@ export default function TaskDetailScreen() {
 
                   <View style={styles.optionTextContainer}>
                     <Text style={styles.optionTitle}>
-                      {statusLabels[option]}
+                      {t(statusLabels[option])}
                     </Text>
                     <Text style={styles.optionDescription}>
                       {option === "TODO"
-                        ? "Task has not started"
+                        ? t("Task has not started")
                         : option === "IN_PROGRESS"
-                        ? "Task is currently in progress"
-                        : "Task has been completed"}
+                        ? t("Task is currently in progress")
+                        : t("Task has been completed")}
                     </Text>
                   </View>
 
-                  {selected ? (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={23}
-                      color={colors.dot}
-                    />
-                  ) : (
-                    <View style={styles.unselectedCircle} />
+                  {loading ? ( <ActivityIndicator size="small" color={colors.dot} />
+                 ) : selected ? (
+                     <Ionicons
+                          name="checkmark-circle"
+                          size={23}
+                          color={colors.dot}
+                     />
+                ) : (
+                     <View style={styles.unselectedCircle} />
                   )}
                 </TouchableOpacity>
               );
