@@ -25,8 +25,16 @@ const languages = [
   { code: "en", flag: "🇬🇧", name: "English", sub: "English" }
 ]
 
+type Project = {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+};
+
+
 export default function ProjectsScreen() {
-const [projects, setProjects] = useState([])
+const [projects, setProjects] = useState<Project[]>([])
 const [modalVisible, setModalVisible] = useState(false);
 const [projectName, setProjectName] = useState("");
 const [projectDescription, setProjectDescription] = useState("");
@@ -86,6 +94,10 @@ const formatDate = (createdAt: string) => {
         }
       })
 
+      setModalVisible(false)
+      setProjectName("")
+      setProjectDescription("")
+
       Toast.show({
         type: "success",
         text1: t("Project Created"),
@@ -107,30 +119,37 @@ const formatDate = (createdAt: string) => {
     }
   };
 
-  const getproject = async () => {
-    setLoading(true)
-    try {
-      const token = await SecureStore.getItemAsync("token")
-      const response = await API.get("/projects", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
+  
+const getproject = async () => {
+  setLoading(true);
 
-      setProjects(response.data)
-    }
-    catch(error : any) {
-      Toast.show({
-        type: "error",
-        text1: t("Failed to Load Projects"),
-        text2: t("Unable to fetch projects. Please try again."),
-        position: "bottom"
-      });
-    }
-    finally {
-      setLoading(false)
-    }
+  try {
+    const token = await SecureStore.getItemAsync("token");
+
+    const response = await API.get("/projects", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const sortedProjects = [...response.data].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime()
+    );
+
+    setProjects(sortedProjects);
+  } catch (error: any) {
+    Toast.show({
+      type: "error",
+      text1: t("Failed to Load Projects"),
+      text2: t("Unable to fetch projects. Please try again."),
+      position: "bottom",
+    });
+  } finally {
+    setLoading(false);
   }
+};
 
   const handleRefresh = () => {
     setLoading(true)
@@ -209,7 +228,7 @@ const formatDate = (createdAt: string) => {
 
         <FlatList
           data={projects}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item: Project) => item.id.toString()}
           renderItem={renderProject}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}

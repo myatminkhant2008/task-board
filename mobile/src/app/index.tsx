@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator, Image } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Network from "expo-network";
 import Toast from "react-native-toast-message";
@@ -43,8 +43,11 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.body}>
-      <Text style={styles.text}>Task Board</Text>
-      <ActivityIndicator size="large" />
+      <Image source={require("../../assets/images/app_icon.png")} style={{ width: 150, height: 150 }}/>
+      <View style={{flexDirection: 'row',gap: '10'}}>
+        <ActivityIndicator size="small" color={"black"} />
+        <Text style={styles.text}>Loading ...</Text>
+      </View>
     </View>
   );
 }
@@ -58,7 +61,8 @@ const styles = StyleSheet.create({
   },
 
   text: {
-    fontSize: 30,
+    fontSize: 15,
     fontWeight: "bold",
+    color: "black"
   },
 });

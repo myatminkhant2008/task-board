@@ -58,7 +58,7 @@ export default function LoginScreen() {
         text2: t("Welcome back!"),
         position: "bottom"
       });
-
+      
       router.replace("/project")
     }
     catch (error: any) {

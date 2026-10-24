@@ -73,6 +73,7 @@ export default function ProfileScreen() {
           style: "destructive",
           onPress: async () => {
             await SecureStore.deleteItemAsync("token")
+            router.dismissAll();
             router.replace("/login");
           },
         },
